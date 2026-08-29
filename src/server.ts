@@ -206,6 +206,95 @@ app.post('/api/identity/primary', (_req, res) => {
   res.json(enroll(process.env.WINGMAN_NAME ?? 'me'));
 });
 
+// ----------------------------------------------------------------- settings
+/**
+ * Two ways in, because there are two legitimate editors:
+ *   - a person holding their own wingman token, editing their own budget
+ *   - the owner holding the admin key, naming a user with ?u=
+ * Everyone else gets nothing. A person can only ever reach their own budget.
+ */
+function whoIsEditing(req: express.Request): string | null {
+  const tok = req.header(AUTH_HEADER) ?? (typeof req.query.t === 'string' ? req.query.t : undefined);
+  const byToken = resolveToken(tok);
+  if (byToken) return byToken;
+
+  const key = req.header(ADMIN_HEADER) ?? (typeof req.query.k === 'string' ? req.query.k : undefined);
+  if (key && key === adminKey) {
+    const u = typeof req.query.u === 'string' ? req.query.u : undefined;
+    if (u && getProfile(u)) return u;
+    return listProfiles().find((p) => !p.isPersona)?.userId ?? null;
+  }
+  return null;
+}
+
+app.get('/settings', (_req, res) => {
+  res.sendFile(resolve(process.cwd(), 'public/settings.html'));
+});
+
+function budgetPayload(userId: string, budget?: ConsentBudget) {
+  const p = getProfile(userId)!;
+  const effective = budget ?? p.budget;
+  return {
+    userId: p.userId,
+    displayName: p.displayName,
+    budget: effective,
+    known: Object.keys(p.fields).length,
+    total: FIELD_NAMES.length,
+    levels: LEVELS,
+    levelLabels: LEVEL_LABELS,
+    fieldLevels: FIELD_LEVELS,
+    views: Object.fromEntries(LEVELS.map((l) => [l, getShareableProfile(userId, l, effective)!])),
+  };
+}
+
+app.get('/me/budget', (req, res) => {
+  const me = whoIsEditing(req);
+  if (!me) {
+    res.status(401).json({ error: 'Open this page from your own settings link.' });
+    return;
+  }
+  res.json(budgetPayload(me));
+});
+
+/** Preview an unsaved budget. Same filter the tools run, nothing saved. */
+app.post('/me/budget/preview', (req, res) => {
+  const me = whoIsEditing(req);
+  if (!me) {
+    res.status(401).json({ error: 'unauthorised' });
+    return;
+  }
+  const b = req.body as ConsentBudget;
+  if (!b?.levels || !Array.isArray(b.neverShare)) {
+    res.status(400).json({ error: 'Expected { levels, neverShare, forwardness }' });
+    return;
+  }
+  res.json(budgetPayload(me, b));
+});
+
+app.put('/me/budget', (req, res) => {
+  const me = whoIsEditing(req);
+  if (!me) {
+    res.status(401).json({ error: 'unauthorised' });
+    return;
+  }
+  const b = req.body as ConsentBudget;
+  const valid =
+    b?.levels &&
+    LEVELS.every((l) => ['free', 'ask', 'never'].includes(b.levels[l])) &&
+    Array.isArray(b.neverShare);
+  if (!valid) {
+    res.status(400).json({ error: 'Each level must be free, ask, or never.' });
+    return;
+  }
+  const clean: ConsentBudget = {
+    levels: Object.fromEntries(LEVELS.map((l) => [l, b.levels[l]])) as ConsentBudget['levels'],
+    neverShare: b.neverShare.map((s) => String(s).trim()).filter(Boolean).slice(0, 20),
+    forwardness: Math.min(5, Math.max(1, Number(b.forwardness) || 3)),
+  };
+  setBudget(me, clean);
+  res.json(budgetPayload(me));
+});
+
 // --------------------------------------------------------------- self-serve
 // Outside /api on purpose: the whole point is that someone who is NOT the owner
 // can claim an identity. Guarded by the join code instead of the owner key.

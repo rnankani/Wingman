@@ -8,29 +8,65 @@
 <link rel="stylesheet" href="/brand/wingman.css" />
 <style>
   :root {
-    --yolk: #fdcf2e;
-    --beak: #ff7709;
-    --plum: #48074f;
-    --plum-soft: #873f94;
-    --ink: #1b1020;
-    --paper: #fffaf0;
-    --card: #ffffff;
-    --line: rgba(72, 7, 79, 0.14);
-    --ok: #1a7f4b;
-    --warn: #b5651d;
-    --down: #b3123c;
+    color-scheme: dark;
 
-    --l0: #2f9e6b;
-    --l1: #2b7fc4;
-    --l2: #c07a12;
-    --l3: #b3123c;
+    /* ---- surfaces ---------------------------------------------------- */
+    --bg:      oklch(0.26 0 0);
+    --panel:   oklch(0.301 0 0);
+    --inset:   oklch(0.269 0 0);
+    --line:    oklch(1 0 0 / 0.07);
+
+    /* ---- text -------------------------------------------------------- */
+    --t1: oklch(0.907 0 0);
+    --t2: oklch(0.798 0 0);
+    --t3: oklch(0.683 0 0);
+    --t4: oklch(0.62 0 0);
+
+    /* ---- accents ----------------------------------------------------- */
+    --blue:   oklch(0.72 0.14 250);
+    --green:  oklch(0.72 0.13 145);
+    --amber:  oklch(0.76 0.13 75);
+    --purple: oklch(0.72 0.14 300);
+    --gray:   oklch(0.72 0 0);
+
+    /* Semantic aliases. The ladder gets hotter as it gets more identifying;
+       there is no red in the palette, so purple carries "stop". */
+    --ok: var(--green);
+    --warn: var(--amber);
+    --down: var(--purple);
+    --l0: var(--green);
+    --l1: var(--blue);
+    --l2: var(--amber);
+    --l3: var(--purple);
+
+    --font: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
+            -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    /* Reserved for literal identifiers — tool names, field keys, shell commands.
+       Everything a human reads as prose uses --font. */
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
+
+  /* A chip tinted by whatever --accent is in scope. Derived with color-mix so
+     every tint traces back to the five palette hues instead of a hand-picked
+     hex that would drift the moment the palette changes.
+     Mix against `transparent`, never against a surface: the surfaces are pure
+     grays (chroma 0, hue 0), and oklch interpolates hue, so mixing green with
+     one lands at hue ~23 and the chip renders brown. Against transparent the
+     hue is preserved and alpha does the work. */
+  .tint {
+    background: color-mix(in oklch, var(--accent) 18%, transparent);
+    border: 1px solid color-mix(in oklch, var(--accent) 32%, transparent);
+    color: var(--accent);
+  }
+
   * { box-sizing: border-box; }
+
   body {
     margin: 0;
-    background: radial-gradient(1200px 480px at 50% -18%, #fff3cc 0%, transparent 60%), var(--paper);
-    color: var(--ink);
-    font: 15px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--t1);
+    font: 15px/1.55 var(--font);
+    -webkit-font-smoothing: antialiased;
     padding: 1.5rem 1.25rem 5rem;
   }
   .wrap { max-width: 1080px; margin: 0 auto; }
@@ -38,114 +74,178 @@
   /* ---------------------------------------------------------------- header */
   header { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 0.35rem; }
   header .chikny { --chikny-scale: 0.5; }
-  .brand { font-weight: 800; font-size: 1.9rem; letter-spacing: -0.04em; line-height: 1; }
-  .brand b { color: var(--plum); } .brand i { font-style: normal; color: var(--beak); }
-  .sub { color: var(--plum-soft); font-size: 0.85rem; margin-top: 0.15rem; }
-  header nav { margin-left: auto; display: flex; gap: 0.4rem; align-items: center; }
+  .brand { font-weight: 800; font-size: 1.9rem; letter-spacing: -0.03em; line-height: 1; }
+  .brand b { color: var(--t1); font-weight: 800; }
+  .brand i { font-style: normal; color: var(--amber); }
+  .sub { color: var(--t4); font-size: 0.85rem; margin-top: 0.2rem; }
+  header nav { margin-left: auto; display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
   header nav a, .ghost {
-    font-size: 0.82rem; text-decoration: none; color: var(--plum); background: #fff;
-    border: 1px solid var(--line); border-radius: 999px; padding: 0.35rem 0.8rem; font-weight: 600;
-    cursor: pointer;
+    font: 600 0.82rem var(--font);
+    text-decoration: none; color: var(--t2); background: var(--inset);
+    border: 1px solid var(--line); border-radius: 999px; padding: 0.38rem 0.85rem;
+    cursor: pointer; transition: color 0.12s, border-color 0.12s;
   }
-  #tick { color: var(--plum-soft); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+  header nav a:hover, .ghost:hover { color: var(--t1); border-color: oklch(1 0 0 / 0.16); }
+  #tick { color: var(--t4); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 
   h2 {
     font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.16em;
-    color: var(--plum-soft); font-weight: 700; margin: 2.2rem 0 0.75rem;
+    color: var(--t4); font-weight: 700; margin: 2.2rem 0 0.75rem;
   }
   h2:first-of-type { margin-top: 1.6rem; }
+  h2 .note { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--t4); }
 
   .card {
-    background: var(--card); border: 1px solid var(--line);
-    border-radius: 14px; padding: 1rem 1.1rem;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 16px; padding: 1rem 1.1rem;
   }
 
   /* --------------------------------------------------------------- checks */
-  .checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0.6rem; }
+  .checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0.7rem; }
   .check { display: flex; gap: 0.6rem; align-items: flex-start; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 0.42rem; flex: none; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 0.45rem; flex: none; }
   .dot.ok { background: var(--ok); }
   .dot.warn { background: var(--warn); }
   .dot.down { background: var(--down); }
-  .check b { display: block; font-size: 0.86rem; }
-  .check span { color: var(--plum-soft); font-size: 0.76rem; overflow-wrap: anywhere; }
+  .check b { display: block; font-size: 0.86rem; color: var(--t1); font-weight: 650; }
+  .check span { color: var(--t3); font-size: 0.76rem; overflow-wrap: anywhere; }
   .check code {
-    display: inline-block; margin-top: 0.3rem; font-size: 0.72rem; background: #fff6e0;
-    border: 1px solid #f2dca6; border-radius: 6px; padding: 0.12rem 0.4rem; color: #7a4b00;
+    display: inline-block; margin-top: 0.35rem; font: 0.72rem var(--mono);
+    background: var(--inset); border: 1px solid var(--line);
+    border-radius: 7px; padding: 0.18rem 0.45rem; color: var(--amber);
     overflow-wrap: anywhere;
   }
 
   /* ---------------------------------------------------------------- tools */
+  .scroll { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   th {
     text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--plum-soft); font-weight: 700; padding: 0 0.6rem 0.5rem 0;
+    color: var(--t4); font-weight: 700; padding: 0 0.6rem 0.55rem 0;
   }
-  td { padding: 0.5rem 0.6rem 0.5rem 0; border-top: 1px solid var(--line); vertical-align: top; }
-  td.name { font: 600 0.85rem ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; }
-  td.desc { color: var(--plum-soft); font-size: 0.78rem; }
+  td { padding: 0.55rem 0.6rem; border-top: 1px solid var(--line); vertical-align: top; }
+  td:last-child, th:last-child { padding-right: 0; }
+  td:first-child, th:first-child { padding-left: 0; }
+  td.name { font: 600 0.82rem var(--mono); color: var(--t1); white-space: nowrap; }
+  td.desc { color: var(--t3); font-size: 0.78rem; }
   .tag {
-    display: inline-block; font: 600 0.7rem ui-monospace, Menlo, monospace;
-    padding: 0.1rem 0.45rem; border-radius: 5px; white-space: nowrap;
+    display: inline-block; font: 600 0.7rem var(--mono);
+    padding: 0.14rem 0.5rem; border-radius: 7px; white-space: nowrap;
   }
-  .tag.ro { background: #e7f6ee; color: var(--ok); }
-  .tag.w  { background: #fdeee2; color: var(--warn); }
-  .tag.d  { background: #fde7ed; color: var(--down); }
-  .tag.u  { background: #fde7ed; color: var(--down); }
+  .tag.ro { --accent: var(--green); }
+  .tag.w  { --accent: var(--amber); }
+  .tag.d  { --accent: var(--purple); }
+  .tag.u  { --accent: var(--purple); }
   .gate { font-size: 0.78rem; font-weight: 650; white-space: nowrap; }
-  .gate.on { color: var(--down); } .gate.off { color: var(--plum-soft); font-weight: 500; }
+  .gate.on { color: var(--amber); }
+  .gate.off { color: var(--t4); font-weight: 500; }
+
+  /* --------------------------------------------------------- negotiations */
+  .clist { display: grid; gap: 0.8rem; }
+  .c-head { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+  .c-head .chikny { --chikny-scale: 0.5; margin: -0.5rem 0; }
+  .vs { font-weight: 700; font-size: 1rem; color: var(--t1); }
+  .vs em { font-style: normal; color: var(--t4); font-weight: 500; margin: 0 0.35rem; }
+  .c-meta { margin-left: auto; font-size: 0.76rem; color: var(--t4); font-variant-numeric: tabular-nums; }
+
+  .turns { margin-top: 0.9rem; border-top: 1px solid var(--line); padding-top: 0.85rem; display: grid; gap: 0.5rem; }
+  .turn { display: flex; }
+  .turn.right { justify-content: flex-end; }
+  .bubble {
+    max-width: min(78%, 30rem); background: var(--inset);
+    border: 1px solid var(--line); border-radius: 14px; padding: 0.5rem 0.7rem;
+    font-size: 0.83rem; color: var(--t2);
+  }
+  .turn.right .bubble { border-color: oklch(1 0 0 / 0.12); }
+  .bubble .from {
+    display: block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--t4); margin-bottom: 0.2rem;
+  }
+  .bubble .msg { overflow-wrap: anywhere; }
+
+  .discl { margin-top: 0.85rem; display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; }
+  .discl .lab { font-size: 0.72rem; color: var(--t4); margin-right: 0.15rem; }
+  .dchip {
+    font: 600 0.71rem var(--mono); padding: 0.16rem 0.5rem; border-radius: 999px;
+  }
+  .dchip.approved::after { content: " ·  approved"; font-family: var(--font); font-weight: 500; opacity: 0.75; }
+  .dchip.free::after { content: " ·  free"; font-family: var(--font); font-weight: 500; opacity: 0.75; }
+
+  .verdicts { margin-top: 0.8rem; display: grid; gap: 0.35rem; }
+  .vrow { font-size: 0.79rem; color: var(--t3); }
+  .vrow b { font-weight: 700; }
+  .vrow b.match { color: var(--green); }
+  .vrow b.pass { color: var(--purple); }
+  .vrow b.needs_human { color: var(--amber); }
+
+  .outcome {
+    margin-top: 0.8rem; border-radius: 12px; padding: 0.6rem 0.75rem; font-size: 0.82rem;
+  }
 
   /* ------------------------------------------------------------- profiles */
   .plist { display: grid; gap: 0.8rem; }
   .p-head { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
   .p-head .chikny { --chikny-scale: 0.5; margin: -0.5rem 0; }
-  .who { font-weight: 750; font-size: 1.05rem; }
+  .who { font-weight: 750; font-size: 1.05rem; color: var(--t1); }
+  .who small { font: 500 0.76rem var(--mono); color: var(--t4); margin-left: 0.4rem; }
   .pill {
     font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
-    padding: 0.15rem 0.5rem; border-radius: 999px; background: #f4ecf6; color: var(--plum-soft);
+    padding: 0.18rem 0.55rem; border-radius: 999px;
+    background: var(--inset); border: 1px solid var(--line); color: var(--t3);
   }
-  .meter { margin-left: auto; font-size: 0.76rem; color: var(--plum-soft); font-variant-numeric: tabular-nums; }
+  .pill.on { --accent: var(--blue); background: color-mix(in oklch, var(--accent) 18%, transparent);
+             border-color: color-mix(in oklch, var(--accent) 32%, transparent); color: var(--accent); }
+  .meter { margin-left: auto; font-size: 0.76rem; color: var(--t4); font-variant-numeric: tabular-nums; }
 
-  .budget { display: flex; gap: 0.35rem; flex-wrap: wrap; margin: 0.75rem 0 0.15rem; }
-  .lv {
-    font: 600 0.72rem ui-monospace, Menlo, monospace; padding: 0.2rem 0.5rem;
-    border-radius: 6px; border: 1px solid var(--line); background: #fff;
-  }
-  .lv em { font-style: normal; opacity: 0.75; }
-  .lv[data-policy="free"]  { border-color: #b7e4ca; background: #eefaf3; color: var(--ok); }
-  .lv[data-policy="ask"]   { border-color: #f2dca6; background: #fff6e6; color: var(--warn); }
-  .lv[data-policy="never"] { border-color: #f5bfcd; background: #fdeef2; color: var(--down); }
+  .budget { display: flex; gap: 0.35rem; flex-wrap: wrap; margin: 0.8rem 0 0.15rem; }
+  .lv { font: 600 0.72rem var(--mono); padding: 0.24rem 0.55rem; border-radius: 8px; }
+  .lv em { font-style: normal; opacity: 0.7; }
+  .lv[data-policy="free"]  { --accent: var(--green); }
+  .lv[data-policy="ask"]   { --accent: var(--amber); }
+  .lv[data-policy="never"] { --accent: var(--purple); }
 
-  .never { margin-top: 0.5rem; font-size: 0.78rem; color: var(--plum-soft); }
-  .never b { color: var(--down); }
+  .never { margin-top: 0.55rem; font-size: 0.78rem; color: var(--t3); }
+  .never b { color: var(--purple); font-weight: 650; }
 
-  .ladder { margin-top: 0.9rem; border-top: 1px solid var(--line); padding-top: 0.8rem; }
-  .tabs { display: flex; gap: 0.3rem; margin-bottom: 0.7rem; flex-wrap: wrap; }
+  .ladder { margin-top: 0.9rem; border-top: 1px solid var(--line); padding-top: 0.85rem; }
+  .tabs { display: flex; gap: 0.3rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
   .tab {
-    font: 600 0.76rem ui-monospace, Menlo, monospace; padding: 0.28rem 0.6rem;
-    border-radius: 7px; border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--plum);
+    font: 600 0.76rem var(--mono); padding: 0.32rem 0.65rem; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--inset); color: var(--t3); cursor: pointer;
+    transition: color 0.12s, border-color 0.12s;
   }
-  .tab[aria-selected="true"] { background: var(--plum); color: #fff; border-color: var(--plum); }
-
-  .kv { display: grid; grid-template-columns: minmax(110px, auto) 1fr; gap: 0.3rem 0.9rem; font-size: 0.84rem; }
-  .kv dt { font: 600 0.78rem ui-monospace, Menlo, monospace; }
-  .kv dd { margin: 0; }
-  .kv dt::after { content: ""; }
-  .lvl { font-size: 0.62rem; font-weight: 700; padding: 0.05rem 0.3rem; border-radius: 4px; margin-left: 0.3rem; vertical-align: 1px; }
-  .lvl.L0 { background: #e7f6ee; color: var(--l0); }
-  .lvl.L1 { background: #e6f1fa; color: var(--l1); }
-  .lvl.L2 { background: #fdf2df; color: var(--l2); }
-  .lvl.L3 { background: #fde7ed; color: var(--l3); }
-
-  .withheld { margin-top: 0.8rem; font-size: 0.78rem; color: var(--plum-soft); }
-  .withheld code { font-size: 0.74rem; background: #f6f1f7; border-radius: 4px; padding: 0.06rem 0.3rem; }
-  .redacted { color: var(--down); font-weight: 600; }
-  .empty { color: var(--plum-soft); font-style: italic; font-size: 0.85rem; }
-
-  .hollow {
-    text-align: center; padding: 2.5rem 1rem; color: var(--plum-soft);
+  .tab:hover { color: var(--t1); }
+  .tab[aria-selected="true"] {
+    background: color-mix(in oklch, var(--t1) 92%, transparent);
+    color: var(--bg); border-color: transparent;
   }
+  .seen { font-size: 0.82rem; font-weight: 650; color: var(--t2); }
+
+  .kv { display: grid; grid-template-columns: minmax(110px, auto) 1fr; gap: 0.35rem 0.9rem; font-size: 0.84rem; margin: 0.55rem 0 0; }
+  .kv dt { font: 600 0.78rem var(--mono); color: var(--t2); }
+  .kv dd { margin: 0; color: var(--t1); overflow-wrap: anywhere; }
+  .lvl {
+    font: 700 0.62rem var(--mono); padding: 0.08rem 0.34rem; border-radius: 5px;
+    margin-left: 0.3rem; vertical-align: 1px;
+  }
+  .lvl.L0 { --accent: var(--l0); } .lvl.L1 { --accent: var(--l1); }
+  .lvl.L2 { --accent: var(--l2); } .lvl.L3 { --accent: var(--l3); }
+
+  .withheld { margin-top: 0.75rem; font-size: 0.78rem; color: var(--t3); }
+  .withheld code {
+    font: 0.74rem var(--mono); background: var(--inset); border: 1px solid var(--line);
+    border-radius: 6px; padding: 0.1rem 0.35rem; color: var(--t3);
+  }
+  .withheld code.redacted { color: var(--purple); border-color: color-mix(in oklch, var(--purple) 30%, transparent); font-weight: 600; }
+  .empty { color: var(--t4); font-style: italic; font-size: 0.85rem; }
+
+  .hollow { text-align: center; padding: 2.5rem 1rem; color: var(--t3); }
   .hollow .chikny { --chikny-scale: 0.5; margin: 0 auto 0.6rem; }
+
+  @media (max-width: 620px) {
+    .meter, .c-meta { margin-left: 0; width: 100%; }
+    .bubble { max-width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -168,8 +268,11 @@
   <h2>Pipeline</h2>
   <div class="card"><div class="checks" id="checks"></div></div>
 
-  <h2>Tool surface <span id="policyNote" style="text-transform:none;letter-spacing:0;font-weight:500"></span></h2>
+  <h2>Tool surface <span class="note" id="policyNote"></span></h2>
   <div class="card" id="toolsCard"></div>
+
+  <h2>Negotiations</h2>
+  <div class="clist" id="channels"></div>
 
   <h2>Profiles</h2>
   <div class="plist" id="profiles"></div>
@@ -194,11 +297,16 @@ const api = (path, init = {}) =>
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const time = (iso) => new Date(iso).toLocaleTimeString();
 
 let schema = { levels: ['L0','L1','L2','L3'], levelLabels: {}, fieldLevels: {} };
 const selectedLevel = new Map();   // userId -> level, survives refresh
 
 const TAG = { '@read-only': 'ro', '@write': 'w', '@destructive': 'd', '@unannotated': 'u' };
+
+/** userId -> display name, so negotiations read as people rather than as ids. */
+let names = new Map();
+const nameOf = (id) => names.get(id) ?? id;
 
 function renderChecks(checks) {
   $('checks').innerHTML = checks.map(c => `
@@ -222,17 +330,93 @@ function renderTools(tools, policy) {
     return;
   }
   $('toolsCard').innerHTML = `
-    <table>
+    <div class="scroll"><table>
       <thead><tr><th>Tool</th><th>Class</th><th>Approval</th><th>What it does</th></tr></thead>
       <tbody>${tools.map(t => `
         <tr>
           <td class="name">${esc(t.name)}</td>
-          <td><span class="tag ${TAG[t.klass] ?? 'u'}">${esc(t.klass)}</span></td>
+          <td><span class="tag tint ${TAG[t.klass] ?? 'u'}">${esc(t.klass)}</span></td>
           <td class="gate ${t.gated ? 'on' : 'off'}">${t.gated ? 'asks you' : 'autonomous'}</td>
           <td class="desc">${esc(t.description)}</td>
         </tr>`).join('')}
       </tbody>
-    </table>`;
+    </table></div>`;
+}
+
+/**
+ * Live negotiations. The server strips disclosed *values* from this feed and
+ * sends only field names — so the dashboard can show that a disclosure
+ * happened, and under what authority, without becoming a way to read the
+ * other side's profile.
+ */
+function renderChannels(channels) {
+  if (!channels.length) {
+    $('channels').innerHTML = `
+      <div class="card hollow">
+        <div class="chikny chikny--resting"></div>
+        <div>No negotiations yet. When two wingmen open a channel it shows up here.</div>
+      </div>`;
+    return;
+  }
+
+  $('channels').innerHTML = channels.map(c => {
+    const [a, b] = c.parties;
+    const verdicts = Object.entries(c.verdicts ?? {});
+    const allMatch = verdicts.length === 2 && verdicts.every(([, v]) => v.verdict === 'match');
+    const anyPass = verdicts.some(([, v]) => v.verdict === 'pass');
+
+    // Pose doubles as the status light: the mascot is the state.
+    const pose = allMatch ? 'matched' : anyPass ? 'passed' : c.closed ? 'thinking' : 'negotiating';
+
+    const turns = (c.turns ?? []).map(t => `
+      <div class="turn ${t.from === b ? 'right' : ''}">
+        <div class="bubble">
+          <span class="from">${esc(nameOf(t.from))} · ${esc(t.level)}</span>
+          <span class="msg">${esc(t.message)}</span>
+        </div>
+      </div>`).join('');
+
+    const discl = (c.disclosures ?? []).map(d => `
+      <span class="dchip tint ${esc(d.via)}" style="--accent: var(--${String(d.level).toLowerCase()})">
+        ${esc(nameOf(d.from))}: ${esc(d.field)}
+      </span>`).join('');
+
+    const vrows = verdicts.map(([who, v]) => `
+      <div class="vrow">
+        ${esc(nameOf(who))} returned <b class="${esc(v.verdict)}">${esc(v.verdict)}</b>${v.reason ? ` — ${esc(v.reason)}` : ''}
+      </div>`).join('');
+
+    const outcome = c.date
+      ? `<div class="outcome tint" style="--accent: var(--green)">
+           Date · ${esc(c.date.venue)} at ${esc(new Date(c.date.isoTime).toLocaleString())}
+           — proposed by ${esc(nameOf(c.date.proposedBy))}, accepted by ${esc((c.date.acceptedBy ?? []).map(nameOf).join(', ') || 'nobody yet')}
+         </div>`
+      : c.intro
+        ? `<div class="outcome tint" style="--accent: var(--blue)">
+             Intro from ${esc(nameOf(c.intro.from))} — ${esc(c.intro.text)}
+           </div>`
+        : '';
+
+    return `
+      <div class="card">
+        <div class="c-head">
+          <div class="chikny chikny--${pose}"></div>
+          <span class="vs">${esc(nameOf(a))}<em>vs</em>${esc(nameOf(b))}</span>
+          <span class="lv tint" data-policy="free" style="--accent: var(--${String(c.level?.[a] ?? 'L0').toLowerCase()})">${esc(c.level?.[a] ?? 'L0')}</span>
+          <span class="lv tint" data-policy="free" style="--accent: var(--${String(c.level?.[b] ?? 'L0').toLowerCase()})">${esc(c.level?.[b] ?? 'L0')}</span>
+          <span class="c-meta">
+            ${c.exchanges}/${c.maxExchanges} exchanges ·
+            ${c.closed ? 'closed' : `waiting on ${esc(nameOf(c.waitingOn))}`} ·
+            opened ${esc(time(c.createdAt))}
+          </span>
+        </div>
+
+        ${turns ? `<div class="turns">${turns}</div>` : `<div class="turns"><div class="empty">No turns posted yet.</div></div>`}
+        ${discl ? `<div class="discl"><span class="lab">disclosed:</span>${discl}</div>` : ''}
+        ${vrows ? `<div class="verdicts">${vrows}</div>` : ''}
+        ${outcome}
+      </div>`;
+  }).join('');
 }
 
 function renderProfiles(profiles) {
@@ -251,7 +435,7 @@ function renderProfiles(profiles) {
     const entries = Object.entries(view.fields);
 
     const budget = schema.levels.map(l => `
-      <span class="lv" data-policy="${esc(p.budget.levels[l])}">
+      <span class="lv tint" data-policy="${esc(p.budget.levels[l])}">
         ${l} <em>${esc(schema.levelLabels[l] ?? '')}</em> · ${esc(p.budget.levels[l])}
       </span>`).join('');
 
@@ -263,7 +447,7 @@ function renderProfiles(profiles) {
 
     const rows = entries.length
       ? `<dl class="kv">${entries.map(([k, v]) => `
-          <dt>${esc(k)}<span class="lvl ${schema.fieldLevels[k]}">${schema.fieldLevels[k]}</span></dt>
+          <dt>${esc(k)}<span class="lvl tint ${schema.fieldLevels[k]}">${schema.fieldLevels[k]}</span></dt>
           <dd>${esc(v)}</dd>`).join('')}</dl>`
       : `<div class="empty">Nothing visible at ${level}.</div>`;
 
@@ -271,9 +455,12 @@ function renderProfiles(profiles) {
       <div class="card">
         <div class="p-head">
           <div class="chikny chikny--${p.isPersona ? 'idle' : 'learning'}"></div>
-          <span class="who">${esc(p.userId)}</span>
+          <span class="who">${esc(p.displayName ?? p.userId)}${
+            p.displayName && p.displayName !== p.userId ? `<small>${esc(p.userId)}</small>` : ''
+          }</span>
           <span class="pill">${p.isPersona ? 'persona' : 'you'}</span>
-          <span class="meter">${p.known}/${p.total} fields · updated ${new Date(p.updatedAt).toLocaleTimeString()}</span>
+          ${p.enrolled ? `<span class="pill on">enrolled</span>` : ''}
+          <span class="meter">${p.known}/${p.total} fields · updated ${esc(time(p.updatedAt))}</span>
         </div>
 
         <div class="budget">${budget}</div>
@@ -287,8 +474,8 @@ function renderProfiles(profiles) {
 
         <div class="ladder">
           <div class="tabs" role="tablist">${tabs}</div>
-          <div><strong style="font-size:.82rem">A stranger's agent at ${level} sees:</strong></div>
-          <div style="margin-top:.5rem">${rows}</div>
+          <div class="seen">A stranger's agent at ${level} sees:</div>
+          ${rows}
           ${view.redacted.length ? `<div class="withheld">stripped by never-share: ${view.redacted.map(f => `<code class="redacted">${esc(f)}</code>`).join(' ')}</div>` : ''}
           ${view.withheldAbove.length ? `<div class="withheld">above this level: ${view.withheldAbove.map(f => `<code>${esc(f)}</code>`).join(' ')}</div>` : ''}
         </div>
@@ -308,10 +495,11 @@ let lastProfiles = [];
 
 async function load() {
   try {
-    const [st, pr, sc] = await Promise.all([
+    const [st, pr, sc, ch] = await Promise.all([
       api('/api/status').then(r => r.json()),
       api('/api/profiles').then(r => r.json()),
       api('/api/schema').then(r => r.json()),
+      api('/api/channels').then(r => r.json()),
     ]);
     if (st.error || pr.error) {
       $('tick').textContent = 'owner key missing — reopen the link from your terminal';
@@ -319,8 +507,10 @@ async function load() {
     }
     schema = sc;
     lastProfiles = pr.profiles;
+    names = new Map(pr.profiles.map(p => [p.userId, p.displayName ?? p.userId]));
     renderChecks(st.checks);
     renderTools(st.tools, st.approvalPolicy);
+    renderChannels(ch.channels ?? []);
     renderProfiles(pr.profiles);
     $('tick').textContent = 'updated ' + new Date().toLocaleTimeString();
   } catch (e) {

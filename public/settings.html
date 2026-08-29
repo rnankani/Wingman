@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wingman — consent budget</title>
+<link rel="icon" href="/brand/icon-32.png" />
+<link rel="stylesheet" href="/brand/wingman.css" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg:    oklch(0.26 0 0);
+    --panel: oklch(0.301 0 0);
+    --inset: oklch(0.269 0 0);
+    --line:  oklch(1 0 0 / 0.07);
+    --t1: oklch(0.907 0 0);
+    --t2: oklch(0.798 0 0);
+    --t3: oklch(0.683 0 0);
+    --t4: oklch(0.62 0 0);
+    --blue: oklch(0.72 0.14 250);
+    --green: oklch(0.72 0.13 145);
+    --amber: oklch(0.76 0.13 75);
+    --purple: oklch(0.72 0.14 300);
+    --l0: var(--green); --l1: var(--blue); --l2: var(--amber); --l3: var(--purple);
+    --font: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
+            -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .tint {
+    background: color-mix(in oklch, var(--accent) 16%, var(--inset));
+    border: 1px solid color-mix(in oklch, var(--accent) 32%, transparent);
+    color: var(--accent);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--t1);
+    font: 15px/1.55 var(--font); -webkit-font-smoothing: antialiased;
+    padding: 1.5rem 1.25rem 5rem;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; }
+
+  header { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 0.35rem; }
+  header .chikny { --chikny-scale: 0.5; }
+  .brand { font-weight: 800; font-size: 1.9rem; letter-spacing: -0.03em; line-height: 1; }
+  .brand i { font-style: normal; color: var(--amber); }
+  .sub { color: var(--t4); font-size: 0.85rem; margin-top: 0.2rem; }
+  header nav { margin-left: auto; display: flex; gap: 0.4rem; align-items: center; }
+  header nav a, .ghost {
+    font: 600 0.82rem var(--font); text-decoration: none; color: var(--t2);
+    background: var(--inset); border: 1px solid var(--line); border-radius: 999px;
+    padding: 0.38rem 0.85rem; cursor: pointer;
+  }
+  header nav a:hover, .ghost:hover { color: var(--t1); border-color: oklch(1 0 0 / 0.16); }
+
+  h2 {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.16em;
+    color: var(--t4); font-weight: 700; margin: 2rem 0 0.75rem;
+  }
+  h2:first-of-type { margin-top: 1.6rem; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 1.1rem 1.15rem; }
+
+  .cols { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+  @media (max-width: 820px) { .cols { grid-template-columns: 1fr; } }
+
+  /* ------------------------------------------------------------- the ladder */
+  .rung { display: grid; gap: 0.55rem; padding: 0.85rem 0; border-top: 1px solid var(--line); }
+  .rung:first-child { border-top: 0; padding-top: 0.2rem; }
+  .rung-head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+  .lvl { font: 700 0.74rem var(--mono); padding: 0.15rem 0.45rem; border-radius: 7px; }
+  .lvl.L0 { --accent: var(--l0); } .lvl.L1 { --accent: var(--l1); }
+  .lvl.L2 { --accent: var(--l2); } .lvl.L3 { --accent: var(--l3); }
+  .rung-name { font-weight: 650; font-size: 0.95rem; }
+  .rung-fields { color: var(--t4); font-size: 0.78rem; }
+
+  .seg { display: flex; gap: 0.3rem; }
+  .seg button {
+    flex: 1; font: 600 0.82rem var(--font); padding: 0.45rem 0.5rem;
+    border-radius: 10px; border: 1px solid var(--line);
+    background: var(--inset); color: var(--t3); cursor: pointer;
+  }
+  .seg button:hover { color: var(--t1); }
+  .seg button[aria-pressed="true"] { --accent: var(--green); }
+  .seg button[aria-pressed="true"][data-p="ask"]   { --accent: var(--amber); }
+  .seg button[aria-pressed="true"][data-p="never"] { --accent: var(--purple); }
+  .seg button[aria-pressed="true"] {
+    background: color-mix(in oklch, var(--accent) 18%, var(--inset));
+    border-color: color-mix(in oklch, var(--accent) 40%, transparent);
+    color: var(--accent);
+  }
+  .what { font-size: 0.76rem; color: var(--t4); min-height: 1.1em; }
+
+  /* --------------------------------------------------------- never / slider */
+  label.f { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em;
+            color: var(--t4); font-weight: 700; margin: 0 0 0.5rem; }
+  .chips { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+  .chip {
+    --accent: var(--purple); font: 600 0.78rem var(--font);
+    padding: 0.2rem 0.3rem 0.2rem 0.6rem; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 0.3rem;
+  }
+  .chip button {
+    border: 0; background: transparent; color: inherit; cursor: pointer;
+    font: 700 0.9rem var(--font); line-height: 1; padding: 0 0.28rem; opacity: 0.7;
+  }
+  .chip button:hover { opacity: 1; }
+  input[type=text] {
+    width: 100%; font: inherit; padding: 0.55rem 0.75rem; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--inset); color: var(--t1);
+  }
+  input[type=text]:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
+  input[type=range] { width: 100%; accent-color: var(--amber); }
+  .rangeRow { display: flex; align-items: center; gap: 0.8rem; }
+  .rangeRow output { font: 700 0.85rem var(--mono); color: var(--amber); min-width: 1.5rem; }
+
+  /* -------------------------------------------------------------- preview */
+  .tabs { display: flex; gap: 0.3rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
+  .tab {
+    font: 600 0.78rem var(--mono); padding: 0.3rem 0.6rem; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--inset); color: var(--t3); cursor: pointer;
+  }
+  .tab[aria-selected="true"] { background: var(--t1); color: var(--bg); border-color: var(--t1); }
+  .kv { display: grid; grid-template-columns: minmax(96px, auto) 1fr; gap: 0.35rem 0.8rem; font-size: 0.84rem; }
+  .kv dt { font: 600 0.78rem var(--mono); color: var(--t3); }
+  .kv dd { margin: 0; color: var(--t1); overflow-wrap: anywhere; }
+  .empty { color: var(--t4); font-style: italic; font-size: 0.85rem; }
+  .note { margin-top: 0.9rem; font-size: 0.78rem; color: var(--t4); }
+  .note code { font: 0.74rem var(--mono); padding: 0.06rem 0.35rem; border-radius: 6px;
+               background: var(--inset); border: 1px solid var(--line); }
+  .note .red { --accent: var(--purple); color: var(--purple); }
+
+  /* ---------------------------------------------------------------- save */
+  .bar {
+    position: sticky; bottom: 0; margin-top: 1.2rem; padding: 0.9rem 0 0;
+    display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
+  }
+  .save {
+    font: 700 0.9rem var(--font); padding: 0.6rem 1.4rem; border-radius: 999px;
+    border: 1px solid var(--amber); background: var(--amber); color: oklch(0.24 0 0); cursor: pointer;
+  }
+  .save:disabled { opacity: 0.45; cursor: default; }
+  .status { font-size: 0.82rem; color: var(--t3); }
+  .gate { font-size: 0.8rem; color: var(--t4); }
+  .gate b { color: var(--amber); }
+  .fatal { color: var(--purple); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="chikny chikny--thinking" role="img" aria-label="Wingman mascot"></div>
+    <div>
+      <div class="brand">Consent <i>budget</i></div>
+      <div class="sub" id="who">…</div>
+    </div>
+    <nav><a href="/" id="back">Dashboard</a></nav>
+  </header>
+
+  <div id="err" class="card fatal" hidden></div>
+
+  <div id="main" hidden>
+    <h2>What your agent may share without asking</h2>
+    <div class="cols">
+      <div class="card" id="ladder"></div>
+
+      <div>
+        <div class="card">
+          <label class="f" for="nsInput">Never share — beats every level</label>
+          <div class="chips" id="chips"></div>
+          <input type="text" id="nsInput" placeholder="e.g. my employer — then Enter" />
+          <p class="note">Plain English. Matched against field names and values, so
+            <code>my employer</code> redacts <code>job</code> even at <b>free</b>.</p>
+        </div>
+
+        <div class="card" style="margin-top:1rem">
+          <label class="f" for="fwd">Forwardness</label>
+          <div class="rangeRow">
+            <input type="range" id="fwd" min="1" max="5" step="1" />
+            <output id="fwdOut">3</output>
+          </div>
+          <p class="note" id="fwdWhat"></p>
+        </div>
+      </div>
+    </div>
+
+    <h2>What a stranger's agent can see right now</h2>
+    <div class="card">
+      <div class="tabs" id="tabs"></div>
+      <div id="preview"></div>
+    </div>
+
+    <div class="bar">
+      <button class="save" id="save" disabled>Save</button>
+      <span class="status" id="status"></span>
+      <span class="gate" id="gate"></span>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $ = (id) => document.getElementById(id);
+
+/**
+ * Two ways to be here: your own token (?t=) or the owner key (?k=, optionally
+ * ?u=someone). Either way, stash it and strip the URL so a token never sits in
+ * the address bar during a demo.
+ */
+const q = new URLSearchParams(location.search);
+const T_STORE = 'wingman.myToken', K_STORE = 'wingman.adminKey', U_STORE = 'wingman.editUser';
+if (q.get('t')) localStorage.setItem(T_STORE, q.get('t'));
+if (q.get('k')) localStorage.setItem(K_STORE, q.get('k'));
+if (q.get('u')) localStorage.setItem(U_STORE, q.get('u'));
+if (q.get('t') || q.get('k')) history.replaceState({}, '', location.pathname);
+
+const TOKEN = localStorage.getItem(T_STORE) ?? '';
+const ADMIN = localStorage.getItem(K_STORE) ?? '';
+const EDIT_USER = localStorage.getItem(U_STORE) ?? '';
+$('back').href = ADMIN ? '/' : '/join';
+
+const headers = () => {
+  const h = { 'content-type': 'application/json' };
+  if (TOKEN) h['x-wingman-token'] = TOKEN;
+  else if (ADMIN) h['x-wingman-admin'] = ADMIN;
+  return h;
+};
+const qs = () => (!TOKEN && ADMIN && EDIT_USER ? `?u=${encodeURIComponent(EDIT_USER)}` : '');
+
+const POLICIES = ['free', 'ask', 'never'];
+const MEANS = {
+  free:  'Shared on its own. You are never interrupted.',
+  ask:   'Your agent pauses and asks you first, every time.',
+  never: 'Cannot leave. There is no route, not even with approval.',
+};
+const FWD = {
+  1: 'Hangs back. Answers what it is asked and little else.',
+  2: 'Reserved. Volunteers a detail only when it clearly helps.',
+  3: 'Balanced. Gives as good as it gets.',
+  4: 'Leans in. Offers detail early to move things along.',
+  5: 'Very forward. Pushes for a decision fast.',
+};
+
+let state = null;    // server payload
+let budget = null;   // local, possibly unsaved
+let saved = null;    // JSON of last-saved budget
+let level = 'L0';
+
+const dirty = () => JSON.stringify(budget) !== saved;
+
+async function load() {
+  const r = await fetch('/me/budget' + qs(), { headers: headers() });
+  const d = await r.json();
+  if (!r.ok) {
+    $('err').hidden = false;
+    $('err').innerHTML = `<b>${esc(d.error ?? 'Cannot load settings.')}</b>
+      <p class="note">Open this page from the link you were given — the owner's dashboard,
+      or your own settings link.</p>`;
+    return;
+  }
+  state = d;
+  budget = structuredClone(d.budget);
+  saved = JSON.stringify(budget);
+  $('who').textContent = `${d.displayName} · ${d.known}/${d.total} fields known`;
+  $('main').hidden = false;
+  renderAll();
+}
+
+function fieldsAt(l) {
+  return Object.entries(state.fieldLevels).filter(([, v]) => v === l).map(([k]) => k);
+}
+
+function renderLadder() {
+  $('ladder').innerHTML = state.levels.map(l => `
+    <div class="rung">
+      <div class="rung-head">
+        <span class="lvl ${l} tint">${l}</span>
+        <span class="rung-name">${esc(state.levelLabels[l] ?? '')}</span>
+      </div>
+      <div class="rung-fields">${fieldsAt(l).join(' · ')}</div>
+      <div class="seg" role="group">
+        ${POLICIES.map(p => `
+          <button data-l="${l}" data-p="${p}" aria-pressed="${budget.levels[l] === p}">${p}</button>
+        `).join('')}
+      </div>
+      <div class="what">${esc(MEANS[budget.levels[l]])}</div>
+    </div>`).join('');
+
+  $('ladder').querySelectorAll('.seg button').forEach(b => {
+    b.addEventListener('click', () => {
+      budget.levels[b.dataset.l] = b.dataset.p;
+      renderAll();
+      refreshPreview();
+    });
+  });
+}
+
+function renderChips() {
+  $('chips').innerHTML = budget.neverShare.map((n, i) => `
+    <span class="chip tint">${esc(n)}<button data-i="${i}" aria-label="Remove ${esc(n)}">×</button></span>
+  `).join('') || `<span class="empty">nothing yet</span>`;
+  $('chips').querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      budget.neverShare.splice(Number(b.dataset.i), 1);
+      renderAll(); refreshPreview();
+    });
+  });
+}
+
+function renderGate() {
+  const asks = state.levels.filter(l => budget.levels[l] === 'ask');
+  const nevers = state.levels.filter(l => budget.levels[l] === 'never');
+  $('gate').innerHTML = asks.length
+    ? `Your agent will stop and ask you at <b>${asks.join(', ')}</b>${nevers.length ? ` and never share ${nevers.join(', ')}` : ''}.`
+    : nevers.length
+      ? `Your agent never interrupts you; ${nevers.join(', ')} simply cannot leave.`
+      : `Your agent will never interrupt you. Everything it knows is shareable.`;
+}
+
+function renderTabs() {
+  $('tabs').innerHTML = state.levels.map(l => `
+    <button class="tab" role="tab" data-l="${l}" aria-selected="${l === level}">
+      ${l} ${esc(state.levelLabels[l] ?? '')}
+    </button>`).join('');
+  $('tabs').querySelectorAll('.tab').forEach(b => {
+    b.addEventListener('click', () => { level = b.dataset.l; renderTabs(); renderPreview(); });
+  });
+}
+
+function renderPreview() {
+  const v = state.views[level];
+  const entries = Object.entries(v.fields);
+  const policy = budget.levels[level];
+
+  $('preview').innerHTML = `
+    ${entries.length
+      ? `<dl class="kv">${entries.map(([k, val]) =>
+          `<dt>${esc(k)}</dt><dd>${esc(val)}</dd>`).join('')}</dl>`
+      : `<div class="empty">Nothing visible at ${level}.</div>`}
+    <div class="note">
+      ${v.redacted.length
+        ? `<div>stripped by never-share: ${v.redacted.map(f => `<code class="red">${esc(f)}</code>`).join(' ')}</div>`
+        : ''}
+      ${v.withheldAbove.length
+        ? `<div>above this level: ${v.withheldAbove.map(f => `<code>${esc(f)}</code>`).join(' ')}</div>`
+        : ''}
+      <div style="margin-top:.5rem">Reaching ${level} is
+        ${policy === 'free' ? '<b>automatic</b> — no interruption'
+          : policy === 'ask' ? '<b>gated</b> — you are asked first'
+          : '<b>impossible</b> — this level never leaves'}.</div>
+    </div>`;
+}
+
+function renderAll() {
+  renderLadder(); renderChips(); renderTabs(); renderPreview(); renderGate();
+  $('fwd').value = budget.forwardness;
+  $('fwdOut').textContent = budget.forwardness;
+  $('fwdWhat').textContent = FWD[budget.forwardness] ?? '';
+  $('save').disabled = !dirty();
+  $('status').textContent = dirty() ? 'unsaved changes' : '';
+}
+
+/** The preview is computed server-side by the same filter the MCP tools call. */
+let previewTimer;
+function refreshPreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(async () => {
+    const r = await fetch('/me/budget/preview' + qs(), {
+      method: 'POST', headers: headers(), body: JSON.stringify(budget),
+    });
+    if (!r.ok) return;
+    state = await r.json();
+    renderPreview();
+  }, 120);
+}
+
+$('nsInput').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const v = e.target.value.trim();
+  if (!v || budget.neverShare.includes(v)) { e.target.value = ''; return; }
+  budget.neverShare.push(v);
+  e.target.value = '';
+  renderAll(); refreshPreview();
+});
+
+$('fwd').addEventListener('input', (e) => {
+  budget.forwardness = Number(e.target.value);
+  $('fwdOut').textContent = budget.forwardness;
+  $('fwdWhat').textContent = FWD[budget.forwardness] ?? '';
+  $('save').disabled = !dirty();
+  $('status').textContent = dirty() ? 'unsaved changes' : '';
+});
+
+$('save').addEventListener('click', async () => {
+  $('save').disabled = true;
+  $('status').textContent = 'saving…';
+  const r = await fetch('/me/budget' + qs(), {
+    method: 'PUT', headers: headers(), body: JSON.stringify(budget),
+  });
+  const d = await r.json();
+  if (!r.ok) { $('status').textContent = d.error ?? 'save failed'; $('save').disabled = false; return; }
+  state = d;
+  budget = structuredClone(d.budget);
+  saved = JSON.stringify(budget);
+  renderAll();
+  $('status').textContent = 'saved — your agent uses this on its next disclosure';
+});
+
+await load();
+</script>
+</body>
+</html>

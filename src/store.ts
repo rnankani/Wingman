@@ -138,12 +138,20 @@ export function setBudget(userId: string, budget: ConsentBudget): Profile | null
  * second direction is what makes free text usable — without it "my employer"
  * matches nothing and the human believes they are protected when they are not.
  */
-export function isRedacted(profile: Profile, field: FieldName): boolean {
-  const needles = profile.budget.neverShare.map((s) => s.trim().toLowerCase()).filter(Boolean);
+export function isRedactedWith(
+  fields: Partial<Record<FieldName, string>>,
+  budget: ConsentBudget,
+  field: FieldName,
+): boolean {
+  const needles = (budget.neverShare ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean);
   if (needles.length === 0) return false;
   const aliases = FIELD_ALIASES[field];
-  const haystack = [field, ...aliases, profile.fields[field] ?? ''].join(' ').toLowerCase();
+  const haystack = [field, ...aliases, fields[field] ?? ''].join(' ').toLowerCase();
   return needles.some((n) => haystack.includes(n) || aliases.some((a) => n.includes(a)));
+}
+
+export function isRedacted(profile: Profile, field: FieldName): boolean {
+  return isRedactedWith(profile.fields, profile.budget, field);
 }
 
 export interface ShareableProfile {
@@ -155,9 +163,19 @@ export interface ShareableProfile {
   withheldAbove: string[];
 }
 
-export function getShareableProfile(userId: string, level: Level): ShareableProfile | null {
+/**
+ * `budgetOverride` lets the settings page preview an UNSAVED budget through the
+ * exact same code the MCP tools use. A preview that reimplemented the filter
+ * would be reassuring and meaningless.
+ */
+export function getShareableProfile(
+  userId: string,
+  level: Level,
+  budgetOverride?: ConsentBudget,
+): ShareableProfile | null {
   const p = getProfile(userId);
   if (!p) return null;
+  const budget = budgetOverride ?? p.budget;
   const allowed = fieldsAtOrBelow(level);
   const fields: Record<string, string> = {};
   const redacted: string[] = [];
@@ -165,7 +183,10 @@ export function getShareableProfile(userId: string, level: Level): ShareableProf
   for (const f of allowed) {
     const v = p.fields[f];
     if (v === undefined) continue;
-    if (isRedacted(p, f)) redacted.push(f);
+    // A "never" level can never be received by anyone, so it does not belong in
+    // a view of what the other side could see — approval cannot unlock it.
+    if (budget.levels[FIELD_LEVELS[f]] === 'never') { redacted.push(f); continue; }
+    if (isRedactedWith(p.fields, budget, f)) redacted.push(f);
     else fields[f] = v;
   }
 
