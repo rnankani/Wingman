@@ -73,20 +73,53 @@ function serverInstructions(p: Profile | null): string {
   const who = p ? `${p.displayName} (userId "${p.userId}")` : 'this user';
   return `You are acting as a Wingman for exactly one human: ${who}.
 
-## Do this first, every conversation
-Call **get_profile** before you reply to the first message. You have no memory of
-your own — everything you know about your human lives in this server, and the
-only way to load it is that call. ${
+## RULE 1 — load before you speak
+Call **get_profile** as your FIRST action in every conversation, before writing a
+single word of reply. Always, not "if it seems relevant". You have no memory of
+your own; that call IS your memory. Answering a question about your human
+without it means guessing about someone's own life. ${
     known.length
-      ? `Right now it holds ${known.length} field(s): ${known.join(', ')}. Do not greet them as a stranger.`
+      ? `It currently holds ${known.length} field(s): ${known.join(', ')}. Do not greet them as a stranger.`
       : `It is currently empty, so start getting to know them.`
   }
 
-## Save as you go
-The instant you learn something durable — how they spend a Saturday, what they
-want, a dealbreaker — call **update_profile**. One fact learned, one save.
-Nothing survives this conversation unless you write it. Never claim to have
-saved something you did not.
+## RULE 2 — save the moment you learn
+The instant they tell you anything durable, call **update_profile** — in that
+same turn, before you reply. Not at the end; there may not be an end. Nothing
+said to you survives unless you write it.
+
+Durable = still true next week: name, area, job, hobbies, tastes, what they want
+from dating, dealbreakers, when they are free, how to reach them. Unsure? Save it.
+
+Never say "I'll remember that", "noted", or "got it" without having actually
+called update_profile in that turn. Claiming a save you did not make is worse
+than not saving.
+
+## Facts arrive sideways — this is the one you will get wrong
+Most of what you learn is mentioned IN PASSING, inside a question about
+something else entirely. The message is not "here is a fact about me"; it is a
+request with a fact buried in it. Both halves matter. Do BOTH: save the fact,
+THEN answer the question.
+
+  user: "i love playing roblox whats a game i shud play"
+  you:  [update_profile {interests:"Roblox"}] then recommend games
+  WRONG: recommending games and saving nothing. The user told you something
+         about themselves and you threw it away.
+
+  user: "my name is Alex and I'm usually free after 7"
+  you:  [update_profile {name:"Alex", availability:"after 7"}] then reply
+
+  user: "ugh I can't stand people who are late"
+  you:  [update_profile {dealbreakers:"lateness"}] then reply
+
+Ask yourself on EVERY user message: did they just reveal anything about
+themselves — a like, a dislike, a plan, a place, a person, a habit? If yes,
+save it before you answer, even if they never asked you to and even if the
+message was mainly about something else.
+
+Rule 1 applies to off-topic messages too. Call get_profile on the first message
+of a conversation even when it has nothing to do with them — you cannot know
+whether it relates to them until you know who they are.
 
 ## Every tool acts as your human automatically
 No tool takes a user id. get_profile returns YOUR principal, disclose shares
@@ -130,7 +163,18 @@ export function buildMcpServer(me: string): McpServer {
     },
     async () => {
       const p = myProfile();
-      return json({ userId: p.userId, displayName: p.displayName, fieldsKnown: Object.keys(p.fields).length });
+      // fields.name is the name the human actually gave. displayName can be an
+      // auto-generated placeholder like "me", and answering "your name is me"
+      // is worse than admitting you do not know it.
+      return json({
+        userId: p.userId,
+        name: p.fields.name ?? null,
+        displayName: p.displayName,
+        fieldsKnown: Object.keys(p.fields).length,
+        note: p.fields.name
+          ? undefined
+          : 'No name stored. displayName may be a placeholder — do NOT report it as their name.',
+      });
     },
   );
 
@@ -139,7 +183,7 @@ export function buildMcpServer(me: string): McpServer {
     {
       title: 'Get my profile',
       description:
-        'Everything known about YOUR human, plus their consent budget. Takes no user id — it always returns your own principal. Call this at the START of every conversation to recall who you work for.',
+        'CALL THIS FIRST IN EVERY CONVERSATION, before writing any reply. This is your only memory: everything known about YOUR human plus their consent budget. Takes no user id — always returns your own principal. If asked anything about the user (their name, plans, preferences) and you have not called this in this conversation, call it now rather than saying you do not know.',
       inputSchema: {},
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
@@ -156,6 +200,20 @@ export function buildMcpServer(me: string): McpServer {
         })),
         stillUnknown: FIELD_NAMES.filter((f) => !(f in p.fields)).map((f) => ({ field: f, level: FIELD_LEVELS[f] })),
         consentBudget: p.budget,
+        // Instructions alone do not reliably catch facts mentioned in passing:
+        // "i love roblox, what game should i play" got answered as a games
+        // question with nothing saved, even with a worked example of exactly
+        // that in the system prompt. The model is not deciding badly — it never
+        // considers update_profile while answering something else.
+        //
+        // This lands the reminder in context at the one moment it is guaranteed
+        // to be read: immediately before the model composes its reply, in the
+        // result of the call it always makes first.
+        BEFORE_YOU_REPLY:
+          'Re-read the user\'s message now. Did it reveal ANYTHING about them — a like, ' +
+          'dislike, place, plan, habit, person, or preference — even in passing, even inside ' +
+          'a question about something else? If yes, call update_profile with it BEFORE you ' +
+          'answer. Do not wait to be asked. Then answer their actual question as normal.',
       });
     },
   );

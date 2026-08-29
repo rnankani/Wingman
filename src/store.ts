@@ -22,6 +22,30 @@ import {
 
 const STORE_PATH = resolve(process.cwd(), 'data/store.json');
 
+/**
+ * Declared above `load()` runs, not beside its only caller. `load()` executes at
+ * module init, so a `const` defined further down the file is still in the
+ * temporal dead zone when the migration touches it — which threw, hit the catch
+ * below, and silently produced an empty store holding every real account.
+ */
+const PLACEHOLDER_NAMES = new Set(['me', 'you', 'friend', 'owner', 'host', 'user', 'admin']);
+
+/**
+ * The name someone types when signing up IS their name, so it belongs in the
+ * profile the agent actually reads.
+ *
+ * displayName and fields.name were two different places with nothing copying
+ * between them: you would sign up as "Smaran", ask your wingman your name, and
+ * it would truthfully say it had none — because `name` is an L3 field nobody had
+ * written. It lands at L3 like any identity field, so the consent budget still
+ * gates whether it ever leaves.
+ */
+function seedFields(displayName: string): Partial<Record<FieldName, string>> {
+  const n = displayName.trim();
+  if (!n || PLACEHOLDER_NAMES.has(n.toLowerCase())) return {};
+  return { name: n };
+}
+
 let store: Store = load();
 
 function load(): Store {
@@ -38,10 +62,20 @@ function load(): Store {
       // written before logins existed comes back consistent instead of letting
       // someone re-register a name that is already taken.
       if (p.username) s.usernames[p.username] = id;
+      // Accounts created before sign-up seeded fields.name kept the typed name
+      // only in displayName, so the agent — which reads fields.name — insisted
+      // it did not know who you were right after you told it at sign-up.
+      if (!p.fields.name) Object.assign(p.fields, seedFields(p.displayName));
     }
     return s;
-  } catch {
-    return empty;
+  } catch (err) {
+    // Returning `empty` here once wiped three real accounts: a ReferenceError in
+    // the migration above was indistinguishable from "no file yet", so the
+    // process came up with a blank store and the next write would have made it
+    // permanent. An unreadable store is a reason to stop, not to start fresh.
+    console.error('[store] refusing to start: could not load', STORE_PATH);
+    console.error(err);
+    throw err;
   }
 }
 
@@ -84,7 +118,7 @@ export function enroll(displayName: string, isPersona = false): Enrollment {
   store.profiles[userId] = {
     userId,
     displayName,
-    fields: {},
+    fields: seedFields(displayName),
     isPersona,
     budget: structuredClone(DEFAULT_BUDGET),
     updatedAt: new Date().toISOString(),
@@ -94,6 +128,7 @@ export function enroll(displayName: string, isPersona = false): Enrollment {
   persist();
   return { userId, displayName, token };
 }
+
 
 export function listTokensFor(userId: string): string[] {
   return Object.entries(store.tokens).filter(([, u]) => u === userId).map(([t]) => t);

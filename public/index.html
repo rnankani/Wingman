@@ -276,50 +276,165 @@
     .meter, .c-meta { margin-left: 0; width: 100%; }
     .bubble { max-width: 100%; }
   }
+
+  /* ================================================================= shell
+     Sidebar + one visible panel. Everything used to be stacked on a single
+     scrolling page, so the thing you actually wanted was always three
+     screens down past the parts you did not. */
+  body { padding: 0; }
+  /* The rail paints the sidebar column for the FULL page height. `.side` itself
+     is sticky and only 100vh tall, so on a long panel its background ran out
+     partway down and the column turned into body grey below the fold. */
+  .shell {
+    display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh;
+    background: linear-gradient(to right, var(--panel) 0 232px, transparent 232px);
+  }
+
+  .side {
+    position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 0.15rem;
+    padding: 1.15rem 0.8rem 1rem;
+    border-right: 1px solid var(--line);
+  }
+  .side-brand { display: flex; align-items: center; gap: 0.6rem; padding: 0 0.35rem 1rem; }
+  .side-brand .chikny { --chikny-scale: 0.375; }
+  .side-brand .brand { font-size: 1.25rem; letter-spacing: -0.03em; }
+
+  .side-label {
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.16em;
+    color: var(--t4); font-weight: 700; padding: 0.9rem 0.6rem 0.4rem;
+  }
+
+  /* navtab, not tab: `.tab` already belongs to the L0-L3 level switcher inside
+     the profile card, and a shared name here flattened it into a column of
+     full-width buttons. */
+  .navtab {
+    position: relative;
+    display: flex; align-items: center; gap: 0.6rem; width: 100%;
+    padding: 0.5rem 0.6rem; border: 0; border-radius: 10px;
+    background: transparent; color: var(--t3); cursor: pointer;
+    font: 600 0.88rem var(--font); text-align: left; text-decoration: none;
+    transition: background 0.12s, color 0.12s;
+  }
+  .navtab:hover { background: var(--inset); color: var(--t1); }
+  .navtab[aria-current="page"] { background: var(--inset); color: var(--t1); }
+  /* The active rail reads as "you are here" without relying on colour alone. */
+  .navtab[aria-current="page"]::before {
+    content: ""; position: absolute; left: 0.15rem; width: 3px; height: 1.15rem;
+    border-radius: 2px; background: var(--amber);
+  }
+  .navtab .ico { width: 1.1rem; text-align: center; flex: none; font-size: 0.95rem; opacity: 0.9; }
+  .navtab .count {
+    margin-left: auto; font: 700 0.7rem var(--mono); padding: 0.05rem 0.4rem;
+    border-radius: 999px; background: var(--bg); color: var(--t3);
+  }
+  .navtab[aria-current="page"] .count { color: var(--amber); }
+
+  .side-foot { margin-top: auto; padding-top: 0.8rem; border-top: 1px solid var(--line); }
+  .side-me { padding: 0.15rem 0.6rem 0.6rem; font-size: 0.78rem; color: var(--t3); overflow-wrap: anywhere; }
+  .side-me b { display: block; color: var(--t1); font-size: 0.86rem; font-weight: 650; }
+  .side-foot form { display: block; }
+  .side-foot .navtab { font-weight: 500; font-size: 0.82rem; color: var(--t4); }
+
+  .main { padding: 1.5rem 1.6rem 5rem; min-width: 0; }
+  .main-head {
+    display: flex; align-items: baseline; gap: 0.7rem;
+    margin-bottom: 1.1rem; flex-wrap: wrap;
+  }
+  .main-head h1 { margin: 0; font-size: 1.35rem; font-weight: 750; letter-spacing: -0.02em; }
+  .main-head .blurb { color: var(--t4); font-size: 0.85rem; }
+  .main-head .right { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
+
+  .panel[hidden] { display: none; }
+  .panel > h2:first-child { margin-top: 0; }
+
+
+  @media (max-width: 800px) {
+    .shell { grid-template-columns: 1fr; background: none; }
+    .side {
+      position: static; max-height: none;
+      flex-direction: row; flex-wrap: nowrap; align-items: center;
+      background: var(--panel);
+      gap: 0.3rem; overflow-x: auto; overflow-y: visible; padding: 0.7rem 0.8rem;
+      border-right: 0; border-bottom: 1px solid var(--line);
+    }
+    /* #tabs is its own flex item, so its buttons kept stacking inside it and the
+       bar rendered as a ragged grid. display:contents dissolves the wrapper so
+       every tab becomes a direct child of the row. */
+    .side #tabs { display: contents; }
+    /* width:100% is what stacks them in the rail; on one row it forces a wrap. */
+    .side .navtab { width: auto; flex: 0 0 auto; white-space: nowrap; }
+    .side-brand, .side-label, .side-me { display: none; }
+    .side-foot { margin: 0; padding: 0; border: 0; display: flex; flex: 0 0 auto; }
+    .navtab[aria-current="page"]::before { display: none; }
+    .main { padding: 1.1rem 1rem 4rem; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="shell">
 
-  <header>
-    <div class="chikny chikny--logo" role="img" aria-label="Wingman mascot"></div>
-    <div>
+  <aside class="side">
+    <div class="side-brand">
+      <div class="chikny chikny--logo" role="img" aria-label="Wingman mascot"></div>
       <div class="brand"><b>Wing</b><i>man</i></div>
-      <div class="sub">dashboard · localhost:3000</div>
     </div>
-    <nav>
-      <span id="tick"></span>
-      <span class="me" id="me"></span>
-      <button class="ghost" id="refresh">Refresh</button>
-      <a href="/brand/">Brand</a>
-      <a href="/settings" id="settingsLink">Settings</a>
-      <form method="POST" action="/logout" style="display:inline">
-        <button class="ghost" type="submit">Sign out</button>
-      </form>
+
+    <nav id="tabs">
+      <button class="navtab" data-panel="profile"><span class="ico">&#9673;</span> Profile</button>
+      <button class="navtab" data-panel="channels"><span class="ico">&#8644;</span> Negotiations <span class="count" id="cChannels" hidden></span></button>
+      <button class="navtab" data-panel="candidates"><span class="ico">&#10022;</span> Candidates <span class="count" id="cCandidates" hidden></span></button>
+      <button class="navtab" data-panel="connect"><span class="ico">&#9095;</span> Connect</button>
+      <button class="navtab" data-panel="system" id="tabSystem" hidden><span class="ico">&#9881;</span> System</button>
     </nav>
-  </header>
 
-  <!-- Owner-only: describes this machine's TrueForge wiring, which is nobody
-       else's business. Hidden entirely rather than rendered empty. -->
-  <div id="ownerOnly" hidden>
-    <h2>Pipeline</h2>
-    <div class="card"><div class="checks" id="checks"></div></div>
+    <div class="side-label">Settings</div>
+    <a class="navtab" href="/settings"><span class="ico">&#9703;</span> Consent budget</a>
+    <a class="navtab" href="/brand/"><span class="ico">&#9680;</span> Brand</a>
 
-    <h2>Tool surface <span class="note" id="policyNote"></span></h2>
-    <div class="card" id="toolsCard"></div>
-  </div>
+    <div class="side-foot">
+      <div class="side-me" id="me"></div>
+      <form method="POST" action="/logout">
+        <button class="navtab" type="submit"><span class="ico">&#8594;</span> Sign out</button>
+      </form>
+    </div>
+  </aside>
 
-  <h2>Connect your machine</h2>
-  <div class="card" id="connect"></div>
+  <main class="main">
+    <div class="main-head">
+      <h1 id="panelTitle">Profile</h1>
+      <span class="blurb" id="panelBlurb"></span>
+      <div class="right">
+        <span id="tick"></span>
+        <button class="ghost" id="refresh">Refresh</button>
+      </div>
+    </div>
 
-  <h2>Your profile</h2>
-  <div class="plist" id="profiles"></div>
+    <section class="panel" id="p-profile">
+      <div class="plist" id="profiles"></div>
+    </section>
 
-  <h2>Negotiations</h2>
-  <div class="clist" id="channels"></div>
+    <section class="panel" id="p-channels" hidden>
+      <div class="clist" id="channels"></div>
+    </section>
 
-  <h2>Candidates <span class="note">— everyone else, at L0 only</span></h2>
-  <div class="clist" id="candidates"></div>
+    <section class="panel" id="p-candidates" hidden>
+      <div class="clist" id="candidates"></div>
+    </section>
+
+    <section class="panel" id="p-connect" hidden>
+      <div class="card" id="connect"></div>
+    </section>
+
+    <!-- Owner-only: this machine&rsquo;s TrueForge wiring, which is nobody else&rsquo;s
+         business. The tab itself stays hidden for everyone else. -->
+    <section class="panel" id="p-system" hidden>
+      <h2>Pipeline</h2>
+      <div class="card"><div class="checks" id="checks"></div></div>
+      <h2>Tool surface <span class="note" id="policyNote"></span></h2>
+      <div class="card" id="toolsCard"></div>
+    </section>
+  </main>
 
 </div>
 
@@ -338,6 +453,45 @@ const api = async (path, init = {}) => {
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const time = (iso) => new Date(iso).toLocaleTimeString();
+
+/* ---------------------------------------------------------------- sections
+   One panel visible at a time. The choice is remembered, because a dashboard
+   that snaps back to the first tab on every refresh is worse than no tabs. */
+const PANELS = {
+  profile:    { title: 'Profile',      blurb: 'what your wingman knows about you' },
+  channels:   { title: 'Negotiations', blurb: 'your agent talking to other agents' },
+  candidates: { title: 'Candidates',   blurb: 'everyone else, at L0 only' },
+  connect:    { title: 'Connect',      blurb: 'point a machine at this server' },
+  system:     { title: 'System',       blurb: 'this host\'s TrueForge wiring' },
+};
+const PANEL_STORE = 'wingman.panel';
+
+function showPanel(name) {
+  if (!PANELS[name]) name = 'profile';
+  const tab = document.querySelector(`.navtab[data-panel="${name}"]`);
+  if (tab?.hidden) name = 'profile';   // e.g. System, for a non-owner
+
+  for (const key of Object.keys(PANELS)) {
+    $(`p-${key}`).hidden = key !== name;
+    document
+      .querySelector(`.navtab[data-panel="${key}"]`)
+      ?.setAttribute('aria-current', key === name ? 'page' : 'false');
+  }
+  $('panelTitle').textContent = PANELS[name].title;
+  $('panelBlurb').textContent = PANELS[name].blurb;
+  localStorage.setItem(PANEL_STORE, name);
+}
+
+document.querySelectorAll('.navtab[data-panel]').forEach((b) =>
+  b.addEventListener('click', () => showPanel(b.dataset.panel)),
+);
+
+/** Counts on the rail, so you can see there is something waiting without opening it. */
+function setCount(id, n) {
+  const el = $(id);
+  el.textContent = n;
+  el.hidden = !n;
+}
 
 let schema = { levels: ['L0','L1','L2','L3'], levelLabels: {}, fieldLevels: {} };
 const selectedLevel = new Map();   // userId -> level, survives refresh
@@ -465,6 +619,7 @@ function renderChannels(channels) {
  * anyone who reads it off a screenshot can act as you.
  */
 let connectData = null;
+let panelReady = false;
 let tokenShown = false;
 
 function renderConnect() {
@@ -652,7 +807,7 @@ async function load() {
     // this session actually owns the server — a 403 here is expected for
     // everyone else and must not blank the rest of the page.
     if (me.isOwner) {
-      $('ownerOnly').hidden = false;
+      $('tabSystem').hidden = false;
       const st = await api('/api/status').then(r => r.json());
       renderChecks(st.checks);
       renderTools(st.tools, st.approvalPolicy);
@@ -669,6 +824,11 @@ async function load() {
     renderProfiles(lastProfiles);
     renderChannels(ch.channels ?? []);
     renderCandidates(cand.candidates ?? []);
+    setCount('cChannels', (ch.channels ?? []).length);
+    setCount('cCandidates', (cand.candidates ?? []).length);
+    // Restored after the owner tab is known, so a saved "system" choice is not
+    // silently downgraded to Profile on every load.
+    if (!panelReady) { showPanel(localStorage.getItem(PANEL_STORE) ?? 'profile'); panelReady = true; }
     $('tick').textContent = 'updated ' + new Date().toLocaleTimeString();
   } catch (e) {
     // The 401 path already redirected to /login; anything else is a real failure.
