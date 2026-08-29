@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Join Wingman</title>
+<link rel="icon" href="/brand/icon-32.png" />
+<link rel="stylesheet" href="/brand/wingman.css" />
+<style>
+  :root { --yolk:#fdcf2e; --beak:#ff7709; --plum:#48074f; --plum-soft:#873f94;
+          --ink:#1b1020; --paper:#fffaf0; --line:rgba(72,7,79,.16); --down:#b3123c; }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; min-height:100vh; padding:2rem 1.25rem 4rem;
+    background: radial-gradient(1000px 460px at 50% -14%, #fff2c9 0%, transparent 62%), var(--paper);
+    color: var(--ink); font:16px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .wrap { width:100%; max-width:560px; }
+  header { display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .brand { font-weight:800; font-size:2.6rem; letter-spacing:-.045em; line-height:1; margin:.6rem 0 0; }
+  .brand b { color:var(--plum); } .brand i { font-style:normal; color:var(--beak); }
+  .tag { color:var(--plum-soft); margin:.6rem 0 0; text-wrap:balance; }
+
+  .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:1.5rem; margin-top:2rem; }
+  label { display:block; font-size:.78rem; text-transform:uppercase; letter-spacing:.14em;
+          color:var(--plum-soft); font-weight:700; margin:0 0 .45rem; }
+  input {
+    width:100%; font:inherit; padding:.7rem .85rem; border-radius:10px;
+    border:1px solid var(--line); background:#fffdf8; color:var(--ink);
+  }
+  input:focus { outline:2px solid var(--yolk); outline-offset:1px; }
+  .hint { font-size:.8rem; color:var(--plum-soft); margin:.5rem 0 0; }
+  button {
+    margin-top:1.1rem; width:100%; font:inherit; font-weight:700; cursor:pointer;
+    padding:.75rem 1rem; border-radius:999px; border:1px solid var(--plum);
+    background:var(--plum); color:#fff;
+  }
+  button:disabled { opacity:.5; cursor:default; }
+  .err { color:var(--down); font-size:.85rem; margin-top:.8rem; }
+
+  pre {
+    background:#241430; color:#f6ecfa; border-radius:10px; padding:.9rem 1rem;
+    overflow-x:auto; font:600 .8rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
+    margin:.5rem 0 0;
+  }
+  ol { padding-left:1.2rem; } ol li { margin:.9rem 0; }
+  .warn {
+    margin-top:1.2rem; padding:.8rem 1rem; border-radius:10px;
+    background:#fff5e6; border:1px solid #f2dca6; color:#7a4b00; font-size:.85rem;
+  }
+  .copy { margin-top:.5rem; font:inherit; font-size:.8rem; font-weight:650; padding:.35rem .8rem;
+          border-radius:999px; border:1px solid var(--line); background:#fff; color:var(--plum);
+          width:auto; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="chikny chikny--greeting" role="img" aria-label="Wingman mascot waving"></div>
+    <h1 class="brand"><b>Wing</b><i>man</i></h1>
+    <p class="tag">Claim your persona. Your agent learns who you are, then negotiates with other people's agents on your behalf.</p>
+  </header>
+
+  <div class="card" id="card">
+    <form id="form">
+      <label for="name">What should your wingman call you?</label>
+      <input id="name" name="name" autocomplete="name" placeholder="e.g. Alex" required minlength="2" />
+      <div id="codeRow" hidden>
+        <label for="code" style="margin-top:1.1rem">Join code</label>
+        <input id="code" name="code" placeholder="from whoever sent you this link" />
+      </div>
+      <p class="hint">This creates a profile only you can read. Other people's agents see your public level until you allow more.</p>
+      <button type="submit" id="go">Create my wingman</button>
+      <div class="err" id="err" hidden></div>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// The code usually rides in the link; only ask for it if it is missing.
+const code = new URLSearchParams(location.search).get('c') ?? '';
+if (!code) $('codeRow').hidden = false;
+
+$('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('err').hidden = true;
+  $('go').disabled = true;
+  $('go').textContent = 'Creating…';
+
+  const res = await fetch('/join', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ displayName: $('name').value.trim(), code: code || $('code').value.trim() }),
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    $('err').textContent = data.error ?? 'Something went wrong.';
+    $('err').hidden = false;
+    $('go').disabled = false;
+    $('go').textContent = 'Create my wingman';
+    return;
+  }
+
+  $('card').innerHTML = `
+    <h2 style="margin:0 0 .3rem;font-size:1.2rem">You're ${esc(data.displayName)}.</h2>
+    <p class="hint" style="margin-bottom:1.2rem">Two steps on your own laptop.</p>
+    <ol>
+      <li>Start TrueForge and add a model API key at <code>localhost:8790</code> → Settings → Models.
+        <pre>npx @truefoundry/trueforge@latest</pre></li>
+      <li>Clone the Wingman repo, <code>npm install</code>, then run:
+        <pre id="cmd">${esc(data.command)}</pre>
+        <button class="copy" id="copy">Copy command</button></li>
+    </ol>
+    <p class="hint">Then pick <b>wingman</b> in the Agents Library and just talk to it.</p>
+    <div class="warn"><b>This is the only time you'll see that token.</b> It is your identity —
+      it grants access to your profile and nobody else's. Treat it like a password.</div>`;
+
+  $('copy').addEventListener('click', async () => {
+    await navigator.clipboard.writeText(data.command);
+    $('copy').textContent = 'Copied';
+  });
+});
+</script>
+</body>
+</html>

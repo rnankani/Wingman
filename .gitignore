@@ -3,3 +3,4 @@ data/store.json
 *.log
 .DS_Store
 data/admin-key
+data/join-code

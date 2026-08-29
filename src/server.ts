@@ -17,9 +17,12 @@ import { PALETTE, POSES, spriteCss } from './brand.js';
 import { getPipelineStatus } from './status.js';
 import { AUTH_HEADER } from './identity.js';
 import { ADMIN_HEADER, adminKey, requireAdmin, requireAdminPage } from './admin.js';
+import { codeOk, joinCode } from './join.js';
 import { FIELD_LEVELS, FIELD_NAMES, LEVEL_LABELS, LEVELS, type ConsentBudget } from './types.js';
 
 const PORT = Number(process.env.PORT ?? 3000);
+/** Soft cap so a public join link cannot fill the registry with junk. */
+const MAX_PEOPLE = Number(process.env.WINGMAN_MAX_PEOPLE ?? 40);
 const app = express();
 
 app.use(express.json({ limit: '1mb' }));
@@ -203,6 +206,39 @@ app.post('/api/identity/primary', (_req, res) => {
   res.json(enroll(process.env.WINGMAN_NAME ?? 'me'));
 });
 
+// --------------------------------------------------------------- self-serve
+// Outside /api on purpose: the whole point is that someone who is NOT the owner
+// can claim an identity. Guarded by the join code instead of the owner key.
+
+app.get('/join', (_req, res) => {
+  res.sendFile(resolve(process.cwd(), 'public/join.html'));
+});
+
+app.post('/join', (req, res) => {
+  if (!codeOk(req.body?.code)) {
+    res.status(403).json({ error: 'Wrong or missing join code. Ask whoever sent you the link.' });
+    return;
+  }
+  const name = String(req.body?.displayName ?? '').trim();
+  if (name.length < 2 || name.length > 40) {
+    res.status(400).json({ error: 'Give a name between 2 and 40 characters.' });
+    return;
+  }
+  if (listProfiles().length >= MAX_PEOPLE) {
+    res.status(429).json({ error: 'This Wingman is full. Ask the host to make room.' });
+    return;
+  }
+
+  const who = enroll(name);
+  // Built from the request's own host so the command works whether they joined
+  // over the tunnel hostname or on the LAN.
+  const base = `${req.get('x-forwarded-proto') ?? req.protocol}://${req.get('host')}`;
+  res.json({
+    ...who,
+    command: `WINGMAN_URL=${base}/mcp \\\n  WINGMAN_TOKEN=${who.token} \\\n  npm run setup`,
+  });
+});
+
 /**
  * Who a wingman token belongs to. Deliberately OUTSIDE /api: the friend's setup
  * script has their own token but not the owner's admin key, and it authenticates
@@ -221,6 +257,8 @@ app.get('/identity/me', (req, res) => {
 app.listen(PORT, () => {
   console.log(`\n  wingman mcp        http://localhost:${PORT}/mcp   (wingman-token auth)`);
   console.log(`  wingman dashboard  http://localhost:${PORT}/?k=${adminKey}`);
+  const pub = process.env.WINGMAN_PUBLIC_URL ?? `http://localhost:${PORT}`;
+  console.log(`  join link (share)  ${pub}/join?c=${joinCode}`);
   console.log(`\n  The dashboard link contains your owner key — it is the whole`);
   console.log(`  password. Anything under /api is refused without it.\n`);
 });
