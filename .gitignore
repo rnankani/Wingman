@@ -4,3 +4,4 @@ data/store.json
 .DS_Store
 data/admin-key
 data/join-code
+data/password

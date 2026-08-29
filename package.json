@@ -7,6 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "setup": "tsx scripts/setup-trueforge.ts",
+    "passwd": "tsx scripts/set-password.ts",
     "invite": "tsx scripts/invite.ts"
   },
   "dependencies": {

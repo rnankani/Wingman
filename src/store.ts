@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { mintToken } from './identity.js';
+import { hashPassword, verifyPassword } from './accounts.js';
 import {
   DEFAULT_BUDGET,
   FIELD_ALIASES,
@@ -24,7 +25,7 @@ const STORE_PATH = resolve(process.cwd(), 'data/store.json');
 let store: Store = load();
 
 function load(): Store {
-  const empty: Store = { profiles: {}, tokens: {}, channels: {} };
+  const empty: Store = { profiles: {}, tokens: {}, usernames: {}, channels: {} };
   if (!existsSync(STORE_PATH)) return empty;
   try {
     const s = { ...empty, ...(JSON.parse(readFileSync(STORE_PATH, 'utf8')) as Store) };
@@ -33,6 +34,10 @@ function load(): Store {
     for (const [id, p] of Object.entries(s.profiles)) {
       if (!p.displayName) p.displayName = id;
       if (!p.budget) p.budget = structuredClone(DEFAULT_BUDGET);
+      // Rebuild the username index from the profiles themselves, so a store
+      // written before logins existed comes back consistent instead of letting
+      // someone re-register a name that is already taken.
+      if (p.username) s.usernames[p.username] = id;
     }
     return s;
   } catch {
@@ -92,6 +97,100 @@ export function enroll(displayName: string, isPersona = false): Enrollment {
 
 export function listTokensFor(userId: string): string[] {
   return Object.entries(store.tokens).filter(([, u]) => u === userId).map(([t]) => t);
+}
+
+/**
+ * Replaces every token this person has with a single fresh one.
+ *
+ * The old tokens stop resolving immediately, which is the point: a token is the
+ * whole identity, so the answer to "I pasted mine into the wrong window" has to
+ * be something stronger than minting a second one alongside it.
+ */
+export function rotateToken(userId: string): string | null {
+  if (!store.profiles[userId]) return null;
+  for (const [t, u] of Object.entries(store.tokens)) if (u === userId) delete store.tokens[t];
+  const token = mintToken();
+  store.tokens[token] = userId;
+  persist();
+  return token;
+}
+
+// ------------------------------------------------------------------ accounts
+
+export function usernameTaken(username: string): boolean {
+  return username in store.usernames;
+}
+
+/**
+ * Sign-up: a person, their dashboard login, and the token their harness will
+ * authenticate with, created together.
+ *
+ * The first account created on a server is its owner — that is the machine the
+ * server is running on, so whoever gets there first is by definition the host.
+ */
+export function createAccount(opts: {
+  displayName: string;
+  username: string;
+  password: string;
+  isPersona?: boolean;
+}): Enrollment {
+  const { userId } = enroll(opts.displayName, opts.isPersona ?? false);
+  const p = store.profiles[userId]!;
+  p.username = opts.username;
+  p.auth = hashPassword(opts.password);
+  p.isOwner = !Object.values(store.profiles).some((o) => o.isOwner);
+  store.usernames[opts.username] = userId;
+  persist();
+  return { userId, displayName: p.displayName, token: ensureToken(userId) };
+}
+
+/**
+ * The only place a password turns into an identity.
+ *
+ * Runs the scrypt comparison even when the username is unknown, against a dummy
+ * credential, so "no such user" and "wrong password" take the same time. A login
+ * box that answers faster for names that do not exist is a username oracle.
+ */
+const DUMMY_CREDS = hashPassword(randomBytes(16).toString('hex'));
+
+export function verifyLogin(username: string, password: string): string | null {
+  const userId = store.usernames[username];
+  const p = userId ? store.profiles[userId] : undefined;
+  const ok = verifyPassword(password, p?.auth ?? DUMMY_CREDS);
+  return ok && p ? p.userId : null;
+}
+
+export function setPassword(userId: string, password: string): boolean {
+  const p = getProfile(userId);
+  if (!p) return false;
+  p.auth = hashPassword(password);
+  persist();
+  return true;
+}
+
+/** Attaches a login to a profile that predates logins. */
+export function attachUsername(userId: string, username: string): boolean {
+  const p = getProfile(userId);
+  if (!p || usernameTaken(username)) return false;
+  if (p.username) delete store.usernames[p.username];
+  p.username = username;
+  store.usernames[username] = userId;
+  persist();
+  return true;
+}
+
+export function isOwner(userId: string): boolean {
+  return store.profiles[userId]?.isOwner === true;
+}
+
+/** Promotes a profile to owner, used when a store predates the owner flag. */
+export function makeOwner(userId: string): boolean {
+  const p = getProfile(userId);
+  if (!p) return false;
+  for (const o of Object.values(store.profiles)) o.isOwner = false;
+  p.isOwner = true;
+  persist();
+  return true;
 }
 
 // ------------------------------------------------------------------ profiles

@@ -96,6 +96,12 @@ export interface Profile {
   isPersona: boolean;
   budget: ConsentBudget;
   updatedAt: string;
+  /** Dashboard login name, lowercase. Absent for profiles that predate logins. */
+  username?: string;
+  /** scrypt salt+hash. Never leaves the server — not in any API response. */
+  auth?: { salt: string; hash: string };
+  /** Whoever runs this server. Sees the TrueForge pipeline; nobody else does. */
+  isOwner?: boolean;
 }
 
 /** One posted message in a negotiation. */
@@ -144,6 +150,8 @@ export interface Store {
   profiles: Record<string, Profile>;
   /** token -> userId. The only way a request becomes an identity. */
   tokens: Record<string, string>;
+  /** lowercase username -> userId. Keeps sign-up collisions cheap to detect. */
+  usernames: Record<string, string>;
   channels: Record<string, Channel>;
 }
 

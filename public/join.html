@@ -7,51 +7,82 @@
 <link rel="icon" href="/brand/icon-32.png" />
 <link rel="stylesheet" href="/brand/wingman.css" />
 <style>
-  :root { --yolk:#fdcf2e; --beak:#ff7709; --plum:#48074f; --plum-soft:#873f94;
-          --ink:#1b1020; --paper:#fffaf0; --line:rgba(72,7,79,.16); --down:#b3123c; }
+  :root {
+    color-scheme: dark;
+    --bg: oklch(0.26 0 0);
+    --panel: oklch(0.301 0 0);
+    --inset: oklch(0.269 0 0);
+    --line: oklch(1 0 0 / 0.07);
+    --t1: oklch(0.907 0 0);
+    --t2: oklch(0.798 0 0);
+    --t3: oklch(0.683 0 0);
+    --t4: oklch(0.62 0 0);
+    --blue: oklch(0.72 0.14 250);
+    --green: oklch(0.72 0.13 145);
+    --amber: oklch(0.76 0.13 75);
+    --purple: oklch(0.72 0.14 300);
+    --font: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
+            -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
   * { box-sizing: border-box; }
   body {
-    margin:0; min-height:100vh; padding:2rem 1.25rem 4rem;
-    background: radial-gradient(1000px 460px at 50% -14%, #fff2c9 0%, transparent 62%), var(--paper);
-    color: var(--ink); font:16px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif;
-    display:flex; flex-direction:column; align-items:center;
+    margin: 0; min-height: 100vh; padding: 2rem 1.25rem 4rem;
+    background: var(--bg); color: var(--t1);
+    font: 16px/1.55 var(--font); -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column; align-items: center;
   }
-  .wrap { width:100%; max-width:560px; }
-  header { display:flex; flex-direction:column; align-items:center; text-align:center; }
-  .brand { font-weight:800; font-size:2.6rem; letter-spacing:-.045em; line-height:1; margin:.6rem 0 0; }
-  .brand b { color:var(--plum); } .brand i { font-style:normal; color:var(--beak); }
-  .tag { color:var(--plum-soft); margin:.6rem 0 0; text-wrap:balance; }
+  .wrap { width: 100%; max-width: 560px; }
+  header { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .chikny { --chikny-scale: 0.5; }
+  .brand { font-weight: 800; font-size: 2.6rem; letter-spacing: -.04em; line-height: 1; margin: .6rem 0 0; }
+  .brand b { color: var(--t1); } .brand i { font-style: normal; color: var(--amber); }
+  .tag { color: var(--t3); margin: .7rem 0 0; text-wrap: balance; font-size: .95rem; }
 
-  .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:1.5rem; margin-top:2rem; }
-  label { display:block; font-size:.78rem; text-transform:uppercase; letter-spacing:.14em;
-          color:var(--plum-soft); font-weight:700; margin:0 0 .45rem; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 1.5rem; margin-top: 2rem; }
+  label { display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .14em;
+          color: var(--t4); font-weight: 700; margin: 1.1rem 0 .45rem; }
+  label:first-of-type { margin-top: 0; }
   input {
-    width:100%; font:inherit; padding:.7rem .85rem; border-radius:10px;
-    border:1px solid var(--line); background:#fffdf8; color:var(--ink);
+    width: 100%; font: 16px var(--font); padding: .65rem .8rem; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--inset); color: var(--t1);
   }
-  input:focus { outline:2px solid var(--yolk); outline-offset:1px; }
-  .hint { font-size:.8rem; color:var(--plum-soft); margin:.5rem 0 0; }
+  input:focus { outline: none; border-color: color-mix(in oklch, var(--amber) 45%, transparent); }
+  .hint { font-size: .8rem; color: var(--t4); margin: .5rem 0 0; }
   button {
-    margin-top:1.1rem; width:100%; font:inherit; font-weight:700; cursor:pointer;
-    padding:.75rem 1rem; border-radius:999px; border:1px solid var(--plum);
-    background:var(--plum); color:#fff;
+    margin-top: 1.2rem; width: 100%; font: 700 .95rem var(--font); cursor: pointer;
+    padding: .7rem 1rem; border-radius: 10px; border: 0;
+    background: var(--t1); color: var(--bg);
   }
-  button:disabled { opacity:.5; cursor:default; }
-  .err { color:var(--down); font-size:.85rem; margin-top:.8rem; }
+  button:hover:not(:disabled) { background: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  .err { color: var(--purple); font-size: .85rem; margin-top: .8rem; }
 
   pre {
-    background:#241430; color:#f6ecfa; border-radius:10px; padding:.9rem 1rem;
-    overflow-x:auto; font:600 .8rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
-    margin:.5rem 0 0;
+    background: var(--inset); color: var(--t2); border: 1px solid var(--line); border-radius: 10px;
+    padding: .9rem 1rem; overflow-x: auto; font: 600 .8rem/1.6 var(--mono); margin: .5rem 0 0;
   }
-  ol { padding-left:1.2rem; } ol li { margin:.9rem 0; }
+  code { font: .85em var(--mono); color: var(--amber); }
+  ol { padding-left: 1.2rem; color: var(--t2); } ol li { margin: .9rem 0; }
   .warn {
-    margin-top:1.2rem; padding:.8rem 1rem; border-radius:10px;
-    background:#fff5e6; border:1px solid #f2dca6; color:#7a4b00; font-size:.85rem;
+    margin-top: 1.2rem; padding: .8rem 1rem; border-radius: 12px;
+    background: color-mix(in oklch, var(--amber) 14%, transparent);
+    border: 1px solid color-mix(in oklch, var(--amber) 32%, transparent);
+    color: var(--amber); font-size: .85rem;
   }
-  .copy { margin-top:.5rem; font:inherit; font-size:.8rem; font-weight:650; padding:.35rem .8rem;
-          border-radius:999px; border:1px solid var(--line); background:#fff; color:var(--plum);
-          width:auto; cursor:pointer; }
+  .ok {
+    margin-top: 1rem; padding: .7rem .9rem; border-radius: 12px; font-size: .85rem;
+    background: color-mix(in oklch, var(--green) 14%, transparent);
+    border: 1px solid color-mix(in oklch, var(--green) 32%, transparent);
+    color: var(--green);
+  }
+  .copy {
+    margin-top: .6rem; width: auto; font: 650 .8rem var(--font); padding: .35rem .8rem;
+    border-radius: 999px; border: 1px solid var(--line); background: var(--inset); color: var(--t2);
+  }
+  .copy:hover { background: var(--inset); color: var(--t1); }
+  .alt { margin-top: 1.2rem; text-align: center; font-size: .85rem; color: var(--t4); }
+  .alt a { color: var(--blue); text-decoration: none; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -66,24 +97,28 @@
     <form id="form">
       <label for="name">What should your wingman call you?</label>
       <input id="name" name="name" autocomplete="name" placeholder="e.g. Alex" required minlength="2" />
-      <div id="codeRow" hidden>
-        <label for="code" style="margin-top:1.1rem">Join code</label>
-        <input id="code" name="code" placeholder="from whoever sent you this link" />
-      </div>
-      <p class="hint">This creates a profile only you can read. Other people's agents see your public level until you allow more.</p>
+
+      <label for="username">Pick a username</label>
+      <input id="username" name="username" autocomplete="username" placeholder="e.g. alex"
+             autocapitalize="none" spellcheck="false" required minlength="3"
+             pattern="[A-Za-z0-9_-]+" />
+
+      <label for="password">Pick a password</label>
+      <input id="password" name="password" type="password" autocomplete="new-password"
+             required minlength="8" />
+
+      <p class="hint">You'll sign in with these to see your own dashboard. Your profile is
+        yours alone — everyone else only ever sees your public level until you allow more.</p>
       <button type="submit" id="go">Create my wingman</button>
       <div class="err" id="err" hidden></div>
     </form>
   </div>
+  <div class="alt">Already have an account? <a href="/login">Sign in</a></div>
 </div>
 
 <script type="module">
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
-// The code usually rides in the link; only ask for it if it is missing.
-const code = new URLSearchParams(location.search).get('c') ?? '';
-if (!code) $('codeRow').hidden = false;
 
 $('form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -94,7 +129,11 @@ $('form').addEventListener('submit', async (e) => {
   const res = await fetch('/join', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ displayName: $('name').value.trim(), code: code || $('code').value.trim() }),
+    body: JSON.stringify({
+      displayName: $('name').value.trim(),
+      username: $('username').value.trim().toLowerCase(),
+      password: $('password').value,
+    }),
   });
   const data = await res.json();
 
@@ -108,7 +147,9 @@ $('form').addEventListener('submit', async (e) => {
 
   $('card').innerHTML = `
     <h2 style="margin:0 0 .3rem;font-size:1.2rem">You're ${esc(data.displayName)}.</h2>
-    <p class="hint" style="margin-bottom:1.2rem">Two steps on your own laptop.</p>
+    <div class="ok">Signed in as <b>@${esc(data.username)}</b> — your dashboard is at
+      <a href="/" style="color:inherit;font-weight:700">/</a>.</div>
+    <p class="hint" style="margin:1.2rem 0">Two more steps, on your own laptop.</p>
     <ol>
       <li>Start TrueForge and add a model API key at <code>localhost:8790</code> → Settings → Models.
         <pre>npx @truefoundry/trueforge@latest</pre></li>
@@ -117,8 +158,10 @@ $('form').addEventListener('submit', async (e) => {
         <button class="copy" id="copy">Copy command</button></li>
     </ol>
     <p class="hint">Then pick <b>wingman</b> in the Agents Library and just talk to it.</p>
-    <div class="warn"><b>This is the only time you'll see that token.</b> It is your identity —
-      it grants access to your profile and nobody else's. Treat it like a password.</div>`;
+    <div class="warn">That token is what your agent authenticates with — it reaches your
+      profile and nobody else's, so treat it like a password. You can always get it again
+      from <b>Connect your machine</b> on your <a href="/" style="color:inherit;font-weight:700">dashboard</a>,
+      or regenerate it there if it leaks.</div>`;
 
   $('copy').addEventListener('click', async () => {
     await navigator.clipboard.writeText(data.command);
