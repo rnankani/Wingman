@@ -318,10 +318,21 @@
   }
   .navtab:hover { background: var(--inset); color: var(--t1); }
   .navtab[aria-current="page"] { background: var(--inset); color: var(--t1); }
-  /* The active rail reads as "you are here" without relying on colour alone. */
+  /* Starts as the left rail; on the current tab it unwraps into a full border. */
+  .navtab::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1.5px solid var(--amber);
+    clip-path: inset(22% calc(100% - 5px) 22% 2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: clip-path 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.15s;
+  }
   .navtab[aria-current="page"]::before {
-    content: ""; position: absolute; left: 0.15rem; width: 3px; height: 1.15rem;
-    border-radius: 2px; background: var(--amber);
+    opacity: 1;
+    clip-path: inset(0);
   }
   .navtab .ico { width: 1.1rem; text-align: center; flex: none; font-size: 0.95rem; opacity: 0.9; }
   .navtab .count {
@@ -366,7 +377,6 @@
     .side .navtab { width: auto; flex: 0 0 auto; white-space: nowrap; }
     .side-brand, .side-label, .side-me { display: none; }
     .side-foot { margin: 0; padding: 0; border: 0; display: flex; flex: 0 0 auto; }
-    .navtab[aria-current="page"]::before { display: none; }
     .main { padding: 1.1rem 1rem 4rem; }
   }
 </style>

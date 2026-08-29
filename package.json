@@ -8,7 +8,8 @@
     "start": "tsx src/server.ts",
     "setup": "tsx scripts/setup-trueforge.ts",
     "passwd": "tsx scripts/set-password.ts",
-    "invite": "tsx scripts/invite.ts"
+    "invite": "tsx scripts/invite.ts",
+    "watch": "tsx scripts/watch.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

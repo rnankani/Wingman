@@ -137,9 +137,16 @@ true but vaguer at a level you ARE allowed, and keep going.
 
 ## Negotiating
 list_candidates (L0 only) -> open_channel -> exchange(channelId, message, level),
-which posts your turn AND waits for their reply. One question per turn. Escalate
-one level at a time, never jump. Cap 8 exchanges, then submit_verdict with
-match, pass, or needs_human. send_intro only after BOTH sides return match.
+which posts your turn AND waits for their reply. One question per turn.
+
+KEEP GOING IN ONE TURN. You only exist while answering your human; the moment
+you reply to them the negotiation freezes until they poke you again. So loop —
+exchange, read the reply, disclose if useful, exchange again — until you reach a
+verdict or hit the cap. Use waitSeconds:180 and retry on timeout. Only summarise
+to your human at the very end.
+
+Escalate one level at a time, never jump. Cap 8 exchanges, then submit_verdict
+with match, pass, or needs_human. send_intro only after BOTH sides return match.
 Never type a private value into a message directly — call the disclose tool and
 use the value it returns. The tools record consent; your prose does not.`;
 }
@@ -357,12 +364,15 @@ export function buildMcpServer(me: string): McpServer {
     {
       title: 'Send a turn and wait for their reply',
       description:
-        'Posts your message to the channel and waits for the other wingman to answer, returning their reply. One call is one round-trip. Ask exactly one question per turn. If it times out, call it again with an empty message to keep waiting.',
+        'Posts your message to the channel and waits for the other wingman to answer, returning their reply. One call is one round-trip. Ask exactly one question per turn. The other side is a person at another laptop, so use waitSeconds:180 and EXPECT to call this several times — on timeout, call it again with message:"" to keep waiting. A timeout is not a failure and never means the negotiation is dead.',
       inputSchema: {
         channelId: z.string(),
         message: z.string().describe('Your turn. Empty string = just keep waiting, post nothing.'),
         level: levelSchema.describe('The disclosure level this message is written at.'),
-        waitSeconds: z.number().int().min(5).max(120).optional(),
+        // Floor of 45: the other side is a human opening a laptop, not a
+        // server. A model that picks 10 gives up before anyone could answer
+        // and then reports the negotiation as stalled.
+        waitSeconds: z.number().int().min(45).max(180).optional(),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
@@ -388,7 +398,7 @@ export function buildMcpServer(me: string): McpServer {
         postTurn(c, me, message.trim(), level);
       }
 
-      const deadline = Date.now() + (waitSeconds ?? 60) * 1000;
+      const deadline = Date.now() + (waitSeconds ?? 120) * 1000;
       while (Date.now() < deadline) {
         const fresh = getChannel(channelId)!;
         const theirNew = fresh.turns.slice(before).find((t) => t.from === them);
@@ -407,10 +417,15 @@ export function buildMcpServer(me: string): McpServer {
         }
         await sleep(600);
       }
+      const fresh = getChannel(channelId)!;
       return json({
         theirReply: null,
         status: 'timeout',
-        hint: 'They have not answered yet. Call exchange again with an empty message to keep waiting.',
+        stillYourMove: fresh.waitingOn === me,
+        NEXT_ACTION:
+          fresh.waitingOn === me
+            ? 'THEY REPLIED WHILE YOU WERE WAITING — call read_channel, then exchange with your next turn.'
+            : 'NOT AN ERROR AND NOT A STALL. They simply have not answered yet. CALL exchange AGAIN NOW with message:"" and waitSeconds:180. Keep doing this. Only stop and tell your human after three consecutive timeouts, and say you are still waiting rather than that it failed.',
       });
     },
   );

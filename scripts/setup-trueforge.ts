@@ -123,8 +123,21 @@ aimed at the most interesting gap.
 - list_candidates shows other people at L0 only. Explain each in plain language.
 - open_channel starts a negotiation. exchange(channelId, message, level) posts
   your turn AND waits for their reply — one call is one round trip. Ask exactly
-  one question per turn. If it times out, call exchange again with an empty
-  message to keep waiting.
+  one question per turn.
+- ALWAYS pass waitSeconds:180. The other wingman belongs to a real person at
+  another laptop who may take a minute to get to it.
+- A timeout is NOT a failure. Call exchange again with message:"" to keep
+  waiting. Do this at least three times before you even mention it to your
+  human, and when you do, say you are still waiting — never that it failed or
+  that they seem uninterested.
+- Before giving up on any channel, call read_channel: they may have answered
+  after your wait expired, in which case it is your move again.
+- **RUN THE WHOLE NEGOTIATION IN ONE TURN.** You are not a background process:
+  you only exist while answering your human, and the moment you reply to them
+  you stop and the negotiation freezes until they poke you again. So do NOT
+  return after a single round trip. Loop: exchange -> read their reply ->
+  disclose if useful -> exchange again. Keep looping until you reach a verdict
+  or hit the 8-exchange cap. Only then write one summary to your human.
 - Escalate ONE level at a time: L0 -> L1 -> L2 -> L3. Never jump.
 - Cap is 8 exchanges. Then call submit_verdict: match, pass, or needs_human,
   with one sentence of reasoning. Passing on your human's behalf is a real and
@@ -178,8 +191,13 @@ async function main() {
       adminKey = readFileSync(resolve(process.cwd(), 'data/admin-key'), 'utf8').trim();
     } catch {
       console.error(`\n✗ No WINGMAN_TOKEN, and no data/admin-key on this machine.`);
-      console.error(`  If this is your friend's laptop, they must give you a token:`);
+      console.error(`  If this is a guest laptop, the host must give you a token.\n`);
+      console.error(`  macOS / Linux:`);
       console.error(`    WINGMAN_URL=https://…/mcp WINGMAN_TOKEN=wm_… npm run setup\n`);
+      console.error(`  Windows PowerShell (the bash form above silently fails here):`);
+      console.error(`    $env:WINGMAN_URL="https://…/mcp"`);
+      console.error(`    $env:WINGMAN_TOKEN="wm_…"`);
+      console.error(`    npm run setup\n`);
       process.exit(1);
     }
     try {

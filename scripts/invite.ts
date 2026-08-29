@@ -106,8 +106,15 @@ async function main() {
   console.log(`  1. Start TrueForge and add a model key at http://localhost:8790`);
   console.log(`\n       npx @truefoundry/trueforge@latest\n`);
   console.log(`  2. Clone this repo, npm install, then run:\n`);
+  console.log(`     macOS / Linux:`);
   console.log(`       WINGMAN_URL=${url}/mcp \\`);
   console.log(`       WINGMAN_TOKEN=${who.token} \\`);
+  console.log(`       npm run setup\n`);
+  // PowerShell does not accept `VAR=value command`; it runs the command with no
+  // env set and the connector silently comes up unauthenticated.
+  console.log(`     Windows PowerShell:`);
+  console.log(`       $env:WINGMAN_URL="${url}/mcp"`);
+  console.log(`       $env:WINGMAN_TOKEN="${who.token}"`);
   console.log(`       npm run setup\n`);
   console.log(`  That token IS their identity. TrueForge sends it as a header on every`);
   console.log(`  MCP call; no tool takes a userId, so neither agent can read the other's`);
