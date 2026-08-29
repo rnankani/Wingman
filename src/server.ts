@@ -5,9 +5,10 @@ import { buildMcpServer } from './mcp.js';
 import { getProfile, getShareableProfile, listProfiles } from './store.js';
 import { PALETTE, POSES, spriteCss } from './brand.js';
 import { getPipelineStatus } from './status.js';
+import { decideApproval, listApprovals, listEvents, resetDemo, runDemo } from './activity.js';
 import { FIELD_LEVELS, FIELD_NAMES, LEVEL_LABELS, LEVELS } from './types.js';
 
-const PORT = Number(process.env.PORT ?? 3000);
+const PORT = Number(process.env.PORT ?? 3001);
 const app = express();
 
 app.use(express.json({ limit: '1mb' }));
@@ -22,6 +23,38 @@ app.get('/brand/poses.json', (_req, res) => {
   res.json({ poses: POSES, palette: PALETTE });
 });
 app.use(express.static(resolve(process.cwd(), 'public')));
+app.get('/status', (_req, res) => {
+  res.sendFile(resolve(process.cwd(), 'public/status.html'));
+});
+
+// --------------------------------------------------------------- activity API
+// Backs the cockpit UI's "doing / waiting / did" feed and the approval gate.
+// Not wired to a live TrueForge negotiation — see src/activity.ts for why.
+app.get('/api/activity', (_req, res) => {
+  res.json({ events: listEvents(), approvals: listApprovals() });
+});
+
+app.post('/api/approvals/:id/decision', (req, res) => {
+  const { decision, editedText } = req.body ?? {};
+  if (!['approve', 'edit', 'decline', 'vaguer'].includes(decision)) {
+    return res.status(400).json({ error: 'decision must be approve, edit, decline, or vaguer' });
+  }
+  try {
+    res.json(decideApproval(req.params.id, decision, editedText));
+  } catch (err) {
+    res.status(404).json({ error: (err as Error).message });
+  }
+});
+
+app.post('/api/demo/run', (_req, res) => {
+  runDemo();
+  res.json({ ok: true });
+});
+
+app.post('/api/demo/reset', (_req, res) => {
+  resetDemo();
+  res.json({ ok: true });
+});
 
 /**
  * Stateless Streamable HTTP. TrueForge only speaks to remote MCP servers

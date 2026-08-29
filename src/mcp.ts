@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { getProfile, getShareableProfile, updateProfile } from './store.js';
+import { getProfile, getShareableProfile, listProfiles, updateProfile } from './store.js';
 import { FIELD_LEVELS, FIELD_NAMES, LEVELS, type FieldName } from './types.js';
 
 const levelSchema = z.enum(LEVELS);
@@ -66,6 +66,23 @@ export function buildMcpServer(): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async ({ userId, level }) => json(getShareableProfile(userId, level)),
+  );
+
+  server.registerTool(
+    'list_candidates',
+    {
+      title: 'List candidates',
+      description:
+        'Browse everyone in the registry (seeded personas for the demo). Returns each candidate\'s profile at L1 (personal) — enough texture to reason about compatibility without touching anything that requires a negotiation. Use this to find people worth pursuing, then explain your reasoning in plain language, not scores.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async () => {
+      const candidates = listProfiles()
+        .filter((p) => p.isPersona)
+        .map((p) => getShareableProfile(p.userId, 'L1'));
+      return json({ count: candidates.length, candidates });
+    },
   );
 
   // -------------------------------------------------------------------- write
