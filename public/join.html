@@ -120,7 +120,20 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-$('form').addEventListener('submit', async (e) => {
+// Closed on localhost: a command saying localhost points at the joiner's own
+// empty machine, so say so before they fill anything in.
+const info = await fetch('/join/info').then(r => r.json()).catch(() => ({}));
+if (info.localOnly) {
+  $('card').innerHTML = `
+    <h2 style="margin:0 0 .5rem;font-size:1.15rem">Sign-ups are closed here.</h2>
+    <p class="hint">You have opened this page on <code>localhost</code>, which only works on
+      the machine running the server. An account created here would be handed a setup
+      command pointing at <i>your</i> computer, where nothing is listening.</p>
+    <p class="hint" style="margin-top:.8rem">Ask the host for their public link — it looks like
+      <code>https://wingman.example.app/join</code> — and sign up there instead.</p>`;
+}
+
+$('form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   $('err').hidden = true;
   $('go').disabled = true;
@@ -158,6 +171,11 @@ $('form').addEventListener('submit', async (e) => {
         <button class="copy" id="copy">Copy command</button></li>
     </ol>
     <p class="hint">Then pick <b>wingman</b> in the Agents Library and just talk to it.</p>
+    ${data.localOnly ? `<div class="warn"><b>That URL says localhost.</b> On your own laptop
+      that points at your own machine, where nothing is running — the connector will find
+      no tools. Ask the host for the public address (something like
+      <code>https://wingman.example.app</code>) and use that in place of
+      <code>http://localhost:3000</code>.</div>` : ''}
     <div class="warn">That token is what your agent authenticates with — it reaches your
       profile and nobody else's, so treat it like a password. You can always get it again
       from <b>Connect your machine</b> on your <a href="/" style="color:inherit;font-weight:700">dashboard</a>,

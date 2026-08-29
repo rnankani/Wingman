@@ -236,17 +236,44 @@ app.get('/api/channels', (_req, res) => {
  * deliberately scoped to the session: `ensureToken` mints one for a profile that
  * predates tokens, but only ever for whoever is signed in.
  */
+/**
+ * Where this server is reachable from someone else's machine.
+ *
+ * WINGMAN_PUBLIC_URL wins over the request host, because the request host is
+ * wrong in the one case that matters: a person signing up while standing at the
+ * host's laptop hits localhost, and a command saying
+ * WINGMAN_URL=http://localhost:3000 points at THEIR empty localhost once they
+ * get home. Falling back to the request host still covers the tunnel and LAN.
+ */
+function publicBase(req: express.Request): string {
+  return (
+    process.env.WINGMAN_PUBLIC_URL ??
+    `${req.get('x-forwarded-proto') ?? req.protocol}://${req.get('host')}`
+  );
+}
+
+const LOCAL_ONLY = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|$)/;
+
+/**
+ * True when a sign-up here would produce an unusable setup command.
+ *
+ * Set WINGMAN_ALLOW_LOCAL_SIGNUP=1 to work on the join flow itself without a
+ * tunnel running; it is off by default because the failure it prevents is
+ * silent, and a silent failure during a demo costs more than the convenience.
+ */
+function localOnlySignup(req: express.Request): boolean {
+  if (process.env.WINGMAN_ALLOW_LOCAL_SIGNUP === '1') return false;
+  return LOCAL_ONLY.test(publicBase(req));
+}
+
 function connectPayload(req: express.Request, userId: string) {
   const token = ensureToken(userId);
-  // Built from the request's own host so the command is correct whether they are
-  // on the tunnel hostname or on the LAN.
-  const base =
-    process.env.WINGMAN_PUBLIC_URL ??
-    `${req.get('x-forwarded-proto') ?? req.protocol}://${req.get('host')}`;
+  const base = publicBase(req);
   return {
     token,
     mcpUrl: `${base}/mcp`,
     command: `WINGMAN_URL=${base}/mcp \\\n  WINGMAN_TOKEN=${token} \\\n  npm run setup`,
+    localOnly: LOCAL_ONLY.test(base),
   };
 }
 
@@ -436,11 +463,28 @@ function signupThrottled(req: express.Request): boolean {
   return rec.n > SIGNUP_LIMIT;
 }
 
+/** Lets the page disable itself before someone fills in a form that cannot work. */
+app.get('/join/info', (req, res) => {
+  res.json({ localOnly: localOnlySignup(req) });
+});
+
 app.get('/join', (_req, res) => {
   res.sendFile(resolve(process.cwd(), 'public/join.html'));
 });
 
 app.post('/join', (req, res) => {
+  // Refuse to hand out an account whose setup command would say localhost. On
+  // the joiner's own laptop that address points at their own empty machine, so
+  // the connector registers, finds zero tools, and the agent quietly has no
+  // Wingman abilities — with nothing in the output naming the cause. Better to
+  // stop here than to mint a real identity behind a command that cannot work.
+  if (localOnlySignup(req)) {
+    res.status(403).json({
+      error:
+        'Sign-ups are closed on localhost. Open the host\'s public link (e.g. https://wingman.example.app/join) and sign up there.',
+    });
+    return;
+  }
   if (signupThrottled(req)) {
     res.status(429).json({ error: 'Too many accounts from here. Try again in a few minutes.' });
     return;
@@ -479,13 +523,19 @@ app.post('/join', (req, res) => {
   // password, a second login screen would be theatre.
   signIn(req, res, who.userId);
 
-  // Built from the request's own host so the command works whether they joined
-  // over the tunnel hostname or on the LAN.
-  const base = `${req.get('x-forwarded-proto') ?? req.protocol}://${req.get('host')}`;
+  // WINGMAN_PUBLIC_URL wins over the request host. Someone who signs up while
+  // standing at the host's laptop would otherwise be handed
+  // WINGMAN_URL=http://localhost:3000 — which on THEIR machine points at their
+  // own empty localhost, so the connector silently finds nothing. The address
+  // that must end up in the command is where the server is reachable from
+  // elsewhere, not where this particular request happened to arrive.
+  const base = publicBase(req);
   res.json({
     ...who,
     username,
     command: `WINGMAN_URL=${base}/mcp \\\n  WINGMAN_TOKEN=${who.token} \\\n  npm run setup`,
+    // Surfaced so the page can warn instead of handing over a broken command.
+    localOnly: LOCAL_ONLY.test(base),
   });
 });
 
