@@ -177,6 +177,21 @@
 </div>
 
 <script type="module">
+/**
+ * The owner key arrives once as ?k=… . Stash it, strip it from the address bar
+ * so it does not end up in a screenshot or a shoulder-surfed URL bar during the
+ * demo, and send it as a header from then on.
+ */
+const KEY_STORE = 'wingman.adminKey';
+const fromUrl = new URLSearchParams(location.search).get('k');
+if (fromUrl) {
+  localStorage.setItem(KEY_STORE, fromUrl);
+  history.replaceState({}, '', location.pathname);
+}
+const ADMIN_KEY = localStorage.getItem(KEY_STORE) ?? '';
+const api = (path, init = {}) =>
+  fetch(path, { ...init, headers: { ...(init.headers ?? {}), 'x-wingman-admin': ADMIN_KEY } });
+
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -294,10 +309,14 @@ let lastProfiles = [];
 async function load() {
   try {
     const [st, pr, sc] = await Promise.all([
-      fetch('/api/status').then(r => r.json()),
-      fetch('/api/profiles').then(r => r.json()),
-      fetch('/api/schema').then(r => r.json()),
+      api('/api/status').then(r => r.json()),
+      api('/api/profiles').then(r => r.json()),
+      api('/api/schema').then(r => r.json()),
     ]);
+    if (st.error || pr.error) {
+      $('tick').textContent = 'owner key missing — reopen the link from your terminal';
+      return;
+    }
     schema = sc;
     lastProfiles = pr.profiles;
     renderChecks(st.checks);

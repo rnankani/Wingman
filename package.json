@@ -7,7 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "setup": "tsx scripts/setup-trueforge.ts",
-    "seed": "tsx scripts/seed.ts"
+    "invite": "tsx scripts/invite.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

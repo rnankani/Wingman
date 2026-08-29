@@ -1,161 +1,190 @@
 # Wingman
 
-Wingman is a safety-first protocol for two AI agents that negotiate on behalf of two people while keeping humans in control. The dating scenario is only the demo; the protocol is the point: staged disclosure, isolated agent context, and explicit approval before anything is sent.
+**Your agent talks to their agent — and never says more than you allowed.**
 
-## Why Wingman
+You spend two minutes talking to your wingman. It learns your texture. Then it
+opens a channel to *someone else's* wingman, and the two agents feel each other
+out on your behalf — disclosing a little more at each step, escalating one rung
+at a time, and stopping to ask you before crossing the line you drew.
 
-Most agent systems optimize for completing a task. Wingman focuses on whether an agent should disclose information or take an action at all. Every outbound step is explainable, reviewable, and bounded by the information the human has approved for that situation.
+Dating is the demo. The contribution is the protocol:
+**agent-to-agent negotiation with progressive disclosure under a human consent budget.**
 
-## Core Features
+The two wingmen run in **separate TrueForge instances on separate machines**.
+Neither can read the other's profile — not because it was told not to, but
+because there is no API for it to try.
 
-### 1. Human approval gate and disclosure ladder
+---
 
-Every outbound message or proposal passes through a human approval gate before it leaves the system.
+## The disclosure ladder
 
-- **Approve** the proposed action as written.
-- **Edit** the action before it is sent.
-- **Decline** the action and stop that path.
-- **Use a vaguer fallback** when the requested disclosure is too specific for the approved level.
+Every profile field sits at exactly one level.
 
-The disclosure ladder prevents an agent from jumping directly from a harmless introduction to sensitive personal information. A denial must not silently retry the same disclosure; it should either ask for a different approval or fall back to a less revealing message.
+| Level | Contains |
+|---|---|
+| **L0** public | vibe, broad interests, area, what a good Saturday looks like |
+| **L1** personal | specific hobbies and tastes, what they want, rough age band |
+| **L2** logistical | availability, precise neighbourhood, dealbreakers |
+| **L3** identity | name, photo, job, contact handle |
 
-### 2. Two-agent negotiation with isolated context
+Each level carries a policy the human sets: `free` · `ask` · `never`, plus a
+free-text `neverShare` list that beats all of it.
 
-Each person has a parent agent that coordinates the interaction, plus a negotiation subagent that works only with the context approved for the current exchange.
+Default: L0 `free`, L1 `free`, L2 `ask`, L3 `ask`.
+Escalation is **one rung at a time** — there is no L0 → L3.
 
-- Subagents receive a minimal, task-specific context projection.
-- Agents exchange structured messages instead of raw internal memory.
-- A subagent returns a verdict to its parent rather than directly sending a message.
-- The parent agent uses that verdict to propose the next human-reviewed action.
+---
 
-This separation makes the negotiation easier to inspect and keeps private context from leaking across agent boundaries.
+## How the consent budget is enforced
 
-### 3. Durable profile memory with shareable levels
+Three independent mechanisms, because instructions are not a security control.
 
-A canonical profile stores a person's preferences, constraints, and other facts separately from what may be shared in a specific conversation.
+**1. Identity comes from a header, not a tool argument.**
+TrueForge connectors support `auth: { type: "header" }`. Each machine's harness
+attaches its own token to every MCP call; the server resolves it to a userId.
+**No tool takes a userId parameter** — a model cannot name someone else and read
+their data, because there is nothing to name.
 
-The sharing boundary is exposed through a function such as:
+**2. Two disclose tools, split by annotation.**
 
-```text
-get_shareable_profile(level)
-```
+| tool | annotation | TrueForge sees | behaviour |
+|---|---|---|---|
+| `disclose_free` | `readOnlyHint: true` | `@read-only` | never gated — and **refuses** any level not marked `free` |
+| `disclose_gated` | `readOnlyHint: false` | `@write` | always pauses for human approval |
 
-The function returns a sanitized projection containing only information allowed at the requested disclosure level. The canonical profile remains durable, while each negotiation receives a temporary shareable view.
+This split exists because `require_approval_for_tools` is frozen into the agent
+manifest at session start, so a live settings change cannot move it. The
+*routing* decision therefore lives in the server (which settings does control)
+while the *approval card* stays in the harness. Flipping L3 from `ask` to `free`
+changes which tool can succeed, with no agent reconfiguration.
 
-## Architecture
+**3. `neverShare` overrides every level.**
+Matched in both directions — needle against the field's name/aliases/value, and
+the field's aliases against the needle — so `"my employer"` redacts `job` even
+though the two strings share no substring. One-directional matching fails
+silently, and a privacy control that fails quietly is worse than none.
 
-```text
-Human A                         Human B
-   |                               |
-   v                               v
-Parent Agent A                 Parent Agent B
-   |                               |
-   +-------- Approval Gate --------+
-              |
-              v
-     Disclosure / Context Service
-          |                 |
-          v                 v
-  Isolated Agent A   Isolated Agent B
-          |                 |
-          +---- Structured ----+
-                Messages
-                   |
-                   v
-             Verdict to Parent
-                   |
-                   v
-              Human Review
-```
+---
 
-### Request flow
+## TrueForge capabilities, and why each is load-bearing
 
-1. A parent agent prepares a proposed message or negotiation step.
-2. The profile service creates a shareable projection for the approved disclosure level.
-3. The approval gate shows the human what will be sent and what information it contains.
-4. The human approves, edits, declines, or requests a vaguer fallback.
-5. Only approved context is passed to the isolated negotiation subagent.
-6. The subagent returns a structured verdict to its parent agent.
-7. The next outbound action goes through the approval gate again.
+| Capability | How Wingman uses it | Why it matters |
+|---|---|---|
+| **Remote MCP connectors** | The Wingman server is the rendezvous both machines dial | `manifest.type` is remote-only — no stdio. This is what makes two-machine work possible at all |
+| **Header auth on connectors** | Each side's token *is* its identity | The privacy boundary. Without it identity would be a forgeable tool argument |
+| **Tool approval** | `disclose_gated`, `send_intro`, `book_date` | The consent budget's checkpoint — by literal tool name, not `@write` |
+| **MCP tool annotations** | `readOnlyHint` / `destructiveHint` on all 14 tools | What `@read-only`/`@write`/`@destructive` selectors resolve against |
+| **Durable sessions** | Profile lives in the MCP server, recalled via `get_profile` | The agent has no memory; a fresh session recalls you through a tool call |
 
-## Safety Invariants
+**Gotcha:** a tool publishing *no* annotations matches neither `@write` nor
+`@destructive`, so the default policy **exempts it from approval** rather than
+gating it ([trueforge#318](https://github.com/truefoundry/trueforge/issues/318)).
+That fails open, and silently. Wingman annotates every tool explicitly *and*
+lists gated tools by literal name. `npm run setup` prints the resulting
+classification table on every run, so a misclassification is visible before a demo.
 
-These rules are the core of the protocol and should remain true as the implementation grows:
+---
 
-- No outbound message is sent without explicit human approval.
-- A subagent can see only the approved context projection for its task.
-- An agent cannot raise the disclosure level on its own.
-- Declining a disclosure does not authorize a disguised retry at the same level.
-- Subagents return decisions or proposals to their parent; they do not bypass the parent or approval gate.
-- Approval decisions and disclosure levels should be auditable.
+## Run it
 
-## Suggested Data Contracts
-
-The exact language and framework are intentionally open, but the implementation should preserve contracts like these:
-
-```text
-type DisclosureLevel = "public" | "contextual" | "sensitive"
-
-type ApprovalDecision = "approve" | "edit" | "decline" | "fallback"
-
-type NegotiationVerdict =
-  "continue" | "ask_human" | "propose" | "decline"
-
-profile.get_shareable_profile(level) -> ShareableProfile
-approval_gate.review(action, level) -> ApprovalDecision
-negotiator.evaluate(approved_context) -> NegotiationVerdict
-```
-
-## Suggested Project Layout
-
-```text
-.
-├── src/
-│   ├── approval/       # Human review and disclosure decisions
-│   ├── negotiation/    # Parent agents and isolated subagents
-│   ├── profiles/       # Durable memory and shareable projections
-│   ├── storage/        # Persistence and audit records
-│   └── ui/             # Demo surface or API handlers
-├── tests/
-├── .env.example
-└── README.md
-```
-
-## Getting Started
-
-This repository currently contains the initial protocol design. Once the runtime scaffold is added, use the following as the setup shape:
-
-### Prerequisites
-
-- A supported runtime and package manager selected for the implementation.
-- Credentials for the model provider used by the agents.
-- A durable storage option for profiles and audit events.
-- A local environment where outbound actions can be reviewed before they are sent.
-
-### Setup placeholder
+Node ≥ 22.14.
 
 ```bash
-git clone https://github.com/rnankani/8-29-Hackathon.git
-cd 8-29-Hackathon
-cp .env.example .env
-# Add model-provider credentials and storage settings to .env
-# Install dependencies with the project's package manager
-# Start the development server or demo
+npm install
+npm run dev                            # Wingman on :3000, prints your dashboard URL
+npx @truefoundry/trueforge@latest      # TrueForge on :8790 — add a model key in Settings → Models
+npm run setup                          # registers the connector, creates the agent
 ```
 
-The first runnable version should expose a small end-to-end path: create or load a profile, generate a shareable projection, present an approval request, run an isolated negotiation step, and return a verdict without bypassing human review.
+Open the dashboard link printed by `npm run dev` — it carries your owner key.
+Then pick **wingman** in TrueForge's Agents Library and talk to it.
 
-## Extending Wingman
+### Two machines
 
-Good next slices of work are:
+```bash
+npm run invite -- "Their Name"
+# or with an existing public hostname:
+WINGMAN_PUBLIC_URL=https://wingman.example.app npm run invite -- "Their Name"
+```
 
-1. Implement the profile store and `get_shareable_profile(level)` projection rules.
-2. Build the approval gate with approve, edit, decline, and fallback states.
-3. Add isolated subagent execution with a strict input/output schema.
-4. Persist audit events for disclosure level, approval decision, and verdict.
-5. Add a small demo UI that makes the approval boundary visible.
-6. Add tests proving that unapproved context cannot reach a subagent or outbound sender.
+That mints their identity and prints the single command they run:
 
-## Project Status
+```bash
+WINGMAN_URL=https://…/mcp WINGMAN_TOKEN=wm_… npm run setup
+```
 
-Wingman is an early hackathon prototype. The README defines the protocol boundary and the first implementation milestones; the runtime and demo can be layered on top without changing the safety invariants above.
+Their token **is** their identity — it grants access to their profile and no one
+else's. It is not a shared secret.
+
+---
+
+## Security model
+
+| Surface | Auth |
+|---|---|
+| `POST /mcp` | wingman token, sent by that person's harness |
+| `GET /identity/me` | wingman token |
+| `/` and `/api/*` | **owner key** — `data/admin-key`, gitignored |
+| `/health`, `/brand/*` | public |
+
+**Never gate this on "is the request from localhost".** Behind any tunnel or
+reverse proxy, the proxy connects from `127.0.0.1`, so every remote request looks
+local and an IP check authorises the entire internet. An earlier version of this
+server did exactly that and served the owner's identity token to the public.
+
+---
+
+## The 14 tools
+
+| | |
+|---|---|
+| `whoami` `get_profile` `get_shareable_profile` | your own principal only |
+| `list_candidates` | others, at L0 only |
+| `read_channel` `my_channels` | negotiation state |
+| `update_profile` | write to your own profile |
+| `open_channel` | start a negotiation |
+| `exchange` | post a turn **and block** until the other wingman replies |
+| `disclose_free` `disclose_gated` | the consent budget |
+| `submit_verdict` `send_intro` `book_date` | closing out |
+
+`exchange` fuses send-and-wait into one call. If the agent had to poll, a single
+forgotten follow-up would stall the negotiation; blocking makes turn-taking
+structural instead of a thing the model has to remember.
+
+---
+
+## Layout
+
+```
+src/types.ts      the ladder, field→level map, never-share aliases
+src/store.ts      JSON store, redaction, channels — single source of truth
+src/identity.ts   token minting, the auth header
+src/admin.ts      owner-key guard for the dashboard and /api
+src/mcp.ts        the 14 tools, every one scoped to the caller
+src/status.ts     TrueForge introspection for the dashboard
+src/brand.ts      mascot sprite map; generates the CSS
+src/server.ts     Express: /mcp, /api, dashboard
+scripts/setup-trueforge.ts   connector + agent, either machine
+scripts/invite.ts            tunnel + enrol a friend
+```
+
+State lives in `data/store.json`. Delete it to start over.
+
+---
+
+## Status
+
+- ✅ Profile builds itself and survives restarts — verified with a fresh session
+      that recalled a stored fact with zero message history
+- ✅ Cross-machine transport, identity isolation, disclosure ladder, gating,
+      verdict rules — 14/14 assertions, including a 30s long-poll held open
+      through Cloudflare
+- ⚠️ **Two live models have not yet negotiated end to end.** Everything above was
+      proven with direct MCP calls, not with two agents talking
+- ❌ `/settings` — the consent budget is enforced but not human-editable
+- ❌ No seeded personas, so `list_candidates` is empty until a second human enrols
+
+## Credits
+
+Mascot art is **Chikny**, a Codex pet — see `public/brand/README.md`. Confirm the
+licence before treating this repo as a distribution of that art.

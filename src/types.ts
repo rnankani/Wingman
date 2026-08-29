@@ -89,6 +89,7 @@ export const DEFAULT_BUDGET: ConsentBudget = {
 
 export interface Profile {
   userId: string;
+  displayName: string;
   /** Sparse — the agent fills these in as it learns them. */
   fields: Partial<Record<FieldName, string>>;
   /** Seeded personas are candidates; the human user is not. */
@@ -97,6 +98,59 @@ export interface Profile {
   updatedAt: string;
 }
 
+/** One posted message in a negotiation. */
+export interface Turn {
+  from: string;
+  message: string;
+  /** Disclosure level this turn was written at. */
+  level: Level;
+  at: string;
+}
+
+/** A field one side actually handed over, and under what authority. */
+export interface DisclosureRecord {
+  from: string;
+  to: string;
+  field: FieldName;
+  level: Level;
+  value: string;
+  /** 'free' = inside the budget; 'approved' = the human said yes at the gate. */
+  via: 'free' | 'approved';
+  at: string;
+}
+
+export type Verdict = 'match' | 'pass' | 'needs_human';
+
+export interface Channel {
+  id: string;
+  /** Exactly two participants, by userId. */
+  parties: [string, string];
+  turns: Turn[];
+  disclosures: DisclosureRecord[];
+  /** Highest level each side has disclosed at so far. Escalates one rung at a time. */
+  level: Record<string, Level>;
+  verdicts: Partial<Record<string, { verdict: Verdict; reason: string }>>;
+  /** Whose turn it is to post. */
+  waitingOn: string;
+  exchanges: number;
+  maxExchanges: number;
+  intro?: { from: string; text: string; at: string };
+  date?: { venue: string; isoTime: string; proposedBy: string; acceptedBy: string[] };
+  closed: boolean;
+  createdAt: string;
+}
+
 export interface Store {
   profiles: Record<string, Profile>;
+  /** token -> userId. The only way a request becomes an identity. */
+  tokens: Record<string, string>;
+  channels: Record<string, Channel>;
+}
+
+export const MAX_EXCHANGES = 8;
+
+/** Ladder order helper — escalation must be one rung at a time. */
+export function nextLevel(current: Level): Level | null {
+  const i = LEVELS.indexOf(current);
+  return i < LEVELS.length - 1 ? LEVELS[i + 1] : null;
 }
