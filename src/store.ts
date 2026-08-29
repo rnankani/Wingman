@@ -95,6 +95,14 @@ export function enroll(displayName: string, isPersona = false): Enrollment {
   return { userId, displayName, token };
 }
 
+/** Development helper retained for the optional persona seed script. */
+export function upsertPersona(profile: Omit<Profile, 'updatedAt'>): Profile {
+  const saved: Profile = { ...profile, isPersona: true, updatedAt: new Date().toISOString() };
+  store.profiles[profile.userId] = saved;
+  persist();
+  return saved;
+}
+
 export function listTokensFor(userId: string): string[] {
   return Object.entries(store.tokens).filter(([, u]) => u === userId).map(([t]) => t);
 }

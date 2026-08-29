@@ -1,5 +1,6 @@
 import express from 'express';
 import { resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { buildMcpServer } from './mcp.js';
 import {
@@ -14,8 +15,10 @@ import {
   resolveToken,
   rotateToken,
   setBudget,
+  updateProfile,
   usernameTaken,
 } from './store.js';
+import { EXTRACT_PROMPT, parseImportPaste } from './import-profile.js';
 import { PALETTE, POSES, spriteCss } from './brand.js';
 import { getPipelineStatus } from './status.js';
 import { AUTH_HEADER } from './identity.js';
@@ -49,6 +52,13 @@ app.use(express.json({ limit: '1mb' }));
 // The login form posts a normal urlencoded body, so it works with JS disabled.
 app.use(express.urlencoded({ extended: false }));
 
+const vite = process.env.NODE_ENV === 'production'
+  ? null
+  : await (async () => {
+      const { createServer } = await import('vite');
+      return createServer({ server: { middlewareMode: true }, appType: 'spa' });
+    })();
+
 // ------------------------------------------------------------------ branding
 // The stylesheet is generated from src/brand.ts so a pose and its CSS cannot
 // drift apart. Everything else in public/ is static.
@@ -60,6 +70,7 @@ app.get('/brand/poses.json', (_req, res) => {
 });
 // Brand assets are harmless and shared by both machines' pages.
 app.use('/brand', express.static(resolve(process.cwd(), 'public/brand')));
+app.get('/theme.css', (_req, res) => res.sendFile(resolve(process.cwd(), 'public/theme.css')));
 
 // Sign-in lives outside every guard — it is how you get past them. Reachable
 // from any machine, which is the point: the server runs here, the browser need
@@ -68,9 +79,21 @@ app.get('/login', getLogin);
 app.post('/login', postLogin);
 app.post('/logout', postLogout);
 
-// The dashboard shell is owner-only, and so is everything under /api.
-app.get(['/', '/index.html'], requireUserPage, (_req, res) => {
-  res.sendFile(resolve(process.cwd(), 'public/index.html'));
+// The React dashboard is session-protected; Vite only handles its modules and assets.
+app.get(['/', '/index.html'], requireUserPage, async (req, res, next) => {
+  try {
+    if (!vite) {
+      res.sendFile(resolve(process.cwd(), 'dist/index.html'));
+      return;
+    }
+    const source = await readFile(resolve(process.cwd(), 'index.html'), 'utf8');
+    res.type('html').send(await vite.transformIndexHtml(req.originalUrl, source));
+  } catch (error) {
+    next(error);
+  }
+});
+app.get('/status', requireUserPage, (_req, res) => {
+  res.sendFile(resolve(process.cwd(), 'public/status.html'));
 });
 app.use('/api', requireUserApi);
 
@@ -150,6 +173,43 @@ app.get('/api/status', requireOwnerApi, async (_req, res) => {
 
 app.get('/api/schema', (_req, res) => {
   res.json({ levels: LEVELS, levelLabels: LEVEL_LABELS, fieldLevels: FIELD_LEVELS });
+});
+
+app.get('/api/import/prompt', (_req, res) => {
+  res.json({ prompt: EXTRACT_PROMPT });
+});
+
+/**
+ * Code-only import. Parses JSON or labeled lines from a ChatGPT/Claude paste.
+ * save=false (default) returns a preview. save=true writes userId "me".
+ */
+app.post('/api/import', (req, res) => {
+  const paste = typeof req.body?.paste === 'string' ? req.body.paste : '';
+  const userId = res.locals.userId as string;
+  const save = req.body?.save === true;
+  if (!paste.trim()) {
+    return res.status(400).json({ error: 'paste a ChatGPT or Claude reply' });
+  }
+  const preview = parseImportPaste(paste);
+  const savedCount = Object.keys(preview.fields).length;
+  if (!save) {
+    return res.json({ ...preview, saved: false, savedCount });
+  }
+  if (savedCount === 0) {
+    return res.status(400).json({ error: 'no profile fields found in that paste', ...preview, saved: false });
+  }
+  const profile = updateProfile(userId, preview.fields);
+  if (!profile) {
+    return res.status(404).json({ error: 'profile not found', ...preview, saved: false });
+  }
+  res.json({
+    ...preview,
+    saved: true,
+    savedCount,
+    userId: profile.userId,
+    known: Object.keys(profile.fields).length,
+    total: FIELD_NAMES.length,
+  });
 });
 
 /**
@@ -553,6 +613,12 @@ app.get('/identity/me', (req, res) => {
   const p = getProfile(userId)!;
   res.json({ userId: p.userId, displayName: p.displayName });
 });
+
+if (vite) {
+  app.use(vite.middlewares);
+} else {
+  app.use(express.static(resolve(process.cwd(), 'dist'), { index: false }));
+}
 
 app.listen(PORT, () => {
   console.log(`\n  wingman mcp        http://localhost:${PORT}/mcp   (wingman-token auth)`);

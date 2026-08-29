@@ -147,29 +147,34 @@ const SHELL = `<!doctype html><meta charset="utf-8"><title>Wingman</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="/brand/icon-32.png"><link rel="stylesheet" href="/brand/wingman.css">
 <style>
-  :root{color-scheme:dark;--bg:oklch(0.26 0 0);--panel:oklch(0.301 0 0);--inset:oklch(0.269 0 0);
-        --line:oklch(1 0 0/0.07);--t1:oklch(0.907 0 0);--t3:oklch(0.683 0 0);--t4:oklch(0.62 0 0);
-        --amber:oklch(0.76 0.13 75);--purple:oklch(0.72 0.14 300);--blue:oklch(0.72 0.14 250);
+  :root{color-scheme:dark;--bg:#171717;--panel:rgba(42,42,42,.94);--inset:#202020;
+        --line:rgba(255,255,255,.09);--t1:#f1f0ed;--t3:#92908b;--t4:#77736b;
+        --amber:#f3c742;--purple:#c7a2ff;--blue:#f3c742;
         --font:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
         --mono:ui-monospace,SFMono-Regular,Menlo,monospace}
   *{box-sizing:border-box}
   body{margin:0;min-height:100vh;display:grid;place-items:center;padding:2rem;
-       background:var(--bg);color:var(--t1);font:15px/1.55 var(--font);-webkit-font-smoothing:antialiased}
-  .box{width:100%;max-width:23rem;text-align:center}
+       background:radial-gradient(circle at 82% -10%,rgba(243,199,66,.12),transparent 28rem),
+                  radial-gradient(circle at 5% 92%,rgba(243,199,66,.05),transparent 24rem),var(--bg);
+       color:var(--t1);font:15px/1.55 var(--font);-webkit-font-smoothing:antialiased}
+  .box{width:100%;max-width:27rem;text-align:center}
   .chikny{--chikny-scale:0.5;margin:0 auto .75rem}
-  h1{margin:0 0 .2rem;font-size:1.9rem;letter-spacing:-0.03em;font-weight:800}
+  h1{margin:0 0 .2rem;font-size:2.25rem;letter-spacing:-0.05em;font-weight:800}
   h1 i{font-style:normal;color:var(--amber)}
   .sub{color:var(--t4);font-size:.85rem;margin-bottom:1.4rem}
-  form{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:1.1rem;text-align:left}
-  label{display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;
-        color:var(--t4);font-weight:700;margin:.75rem 0 .4rem}
+  form{background:linear-gradient(145deg,rgba(255,255,255,.04),rgba(255,255,255,.01)),var(--panel);
+       border:1px solid var(--line);border-radius:20px;padding:1.6rem;text-align:left;
+       box-shadow:0 28px 80px rgba(0,0,0,.35);backdrop-filter:blur(20px)}
+  label{display:block;font-size:.7rem;letter-spacing:.04em;
+        color:var(--t3);font-weight:700;margin:.9rem 0 .45rem}
   label:first-child{margin-top:0}
-  input{width:100%;background:var(--inset);border:1px solid var(--line);border-radius:10px;
-        padding:.6rem .7rem;color:var(--t1);font:15px var(--font)}
-  input:focus{outline:none;border-color:color-mix(in oklch,var(--amber) 45%,transparent)}
-  button{width:100%;margin-top:.9rem;background:var(--t1);color:var(--bg);border:0;border-radius:10px;
-         padding:.62rem;font:700 .92rem var(--font);cursor:pointer}
-  button:hover{background:#fff}
+  input{width:100%;background:var(--inset);border:1px solid var(--line);border-radius:11px;
+        padding:.78rem .9rem;color:var(--t1);font:15px var(--font);transition:border-color .2s,box-shadow .2s,background .2s}
+  input:focus{outline:none;border-color:var(--amber);background:#252525;box-shadow:0 0 0 4px rgba(243,199,66,.11)}
+  button{width:100%;margin-top:1.1rem;background:linear-gradient(135deg,#f3c742,#d99f32);color:#211a08;border:0;
+         border-radius:11px;padding:.78rem;font:700 .92rem var(--font);cursor:pointer;
+         box-shadow:0 14px 30px rgba(243,199,66,.18);transition:transform .2s,box-shadow .2s}
+  button:hover{transform:translateY(-2px);box-shadow:0 18px 38px rgba(243,199,66,.26)}
   .err{margin-top:.8rem;font-size:.82rem;color:var(--purple)}
   .alt{margin-top:1rem;font-size:.8rem;color:var(--t4)}
   .alt a{color:var(--blue);text-decoration:none;font-weight:600}

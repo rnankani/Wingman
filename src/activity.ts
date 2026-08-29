@@ -10,16 +10,33 @@
  * approval decision for real — the UI is not narrating a canned video.
  */
 import { randomUUID } from 'node:crypto';
+import type { PoseName } from './brand.js';
 
 export type EventState = 'doing' | 'waiting' | 'did';
+export type WorkflowStage =
+  | 'profile'
+  | 'preferences'
+  | 'discovery'
+  | 'negotiation'
+  | 'approval'
+  | 'introduction'
+  | 'planning'
+  | 'matched';
+export type EventKind = 'status' | 'message';
+export type MessageDirection = 'internal' | 'outbound' | 'inbound';
 
 export interface ActivityEvent {
   id: string;
   ts: string;
   state: EventState;
+  stage: WorkflowStage;
+  kind: EventKind;
+  direction: MessageDirection;
+  pose: PoseName;
   actor: string;
   title: string;
   detail: string;
+  counterpart?: string;
   approvalId?: string;
 }
 
@@ -66,9 +83,14 @@ function pushApproval(a: Omit<PendingApproval, 'id' | 'ts' | 'status'>): Pending
   approvals.push(full);
   pushEvent({
     state: 'waiting',
+    stage: 'approval',
+    kind: 'status',
+    direction: 'internal',
+    pose: 'thinking',
     actor: 'Wingman',
     title: `Waiting on you: ${labelFor(a.action)}`,
     detail: a.sentence,
+    counterpart: a.candidateName,
     approvalId: full.id,
   });
   return full;
@@ -85,7 +107,7 @@ function labelFor(action: ApprovalAction): string {
 function vaguerVersionOf(a: PendingApproval): string {
   // A crude but real fallback: strip the sentence to the vibe-level clause.
   if (a.action === 'share_detail') {
-    return `Tell ${a.candidateName}'s wingman only that you're "into an active outdoorsy thing and good music" — no specifics yet.`;
+    return `Tell ${a.candidateName}'s wingman only that you're into hands-on projects — no specifics yet.`;
   }
   if (a.action === 'send_intro') {
     return `Tell ${a.candidateName}'s wingman you're interested, without proposing anything concrete yet.`;
@@ -110,9 +132,14 @@ export function decideApproval(
   if (decision === 'decline') {
     pushEvent({
       state: 'did',
+      stage: 'approval',
+      kind: 'status',
+      direction: 'internal',
+      pose: 'passed',
       actor: 'You',
       title: `Declined: ${labelFor(a.action)}`,
       detail: a.sentence,
+      counterpart: a.candidateName,
     });
     const fallback = pushApproval({
       action: a.action,
@@ -123,20 +150,36 @@ export function decideApproval(
     });
     pushEvent({
       state: 'doing',
+      stage: 'approval',
+      kind: 'status',
+      direction: 'internal',
+      pose: 'thinking',
       actor: 'Wingman',
       title: 'Backing off to something vaguer',
       detail: 'You said no to that much detail — proposing a softer version instead of retrying the same thing.',
+      counterpart: a.candidateName,
       approvalId: fallback.id,
     });
   } else {
     const sent = decision === 'edit' && editedText ? editedText : decision === 'vaguer' ? vaguerVersionOf(a) : a.sentence;
     a.sentSentence = sent;
     const label = decision === 'edit' ? 'Sent (edited)' : decision === 'vaguer' ? 'Sent (said less)' : 'Sent';
+    const stage: WorkflowStage =
+      a.action === 'share_detail'
+        ? 'negotiation'
+        : a.action === 'send_intro'
+          ? 'introduction'
+          : 'planning';
     pushEvent({
       state: 'did',
-      actor: 'Wingman',
+      stage,
+      kind: 'message',
+      direction: 'outbound',
+      pose: 'negotiating',
+      actor: 'Your Wingman',
       title: `${label}: ${labelFor(a.action)}`,
       detail: sent,
+      counterpart: `${a.candidateName}'s Wingman`,
     });
     advanceDemo(a);
   }
@@ -162,14 +205,24 @@ function advanceDemo(justResolved: PendingApproval) {
 
   if (justResolved.action === 'share_detail') {
     demoTimer = setTimeout(() => {
-      pushEvent({ state: 'doing', actor: 'Wingman', title: "Maya's wingman answered", detail: 'She climbs too, and just got back into vinyl — proposing the next step.' });
+      pushEvent({
+        state: 'doing',
+        stage: 'negotiation',
+        kind: 'message',
+        direction: 'inbound',
+        pose: 'negotiating',
+        actor: "Maya's Wingman",
+        title: "Maya's wingman answered",
+        detail: 'Her profile also points to hands-on hobbies and curiosity — proposing the next simulated step.',
+        counterpart: 'Your Wingman',
+      });
       demoTimer = setTimeout(() => {
         pushApproval({
           action: 'send_intro',
           candidateId: CANDIDATE.id,
           candidateName: CANDIDATE.name,
-          sentence: `Tell Maya's wingman you'd like an intro — mention you're both usually at the climbing gym on weekends.`,
-          fields: ['availability'],
+          sentence: `Tell Maya's wingman you're interested in learning more based on the shared hands-on energy.`,
+          fields: ['vibe', 'hobbies'],
         });
       }, 1400);
     }, 1200);
@@ -178,7 +231,17 @@ function advanceDemo(justResolved: PendingApproval) {
 
   if (justResolved.action === 'send_intro') {
     demoTimer = setTimeout(() => {
-      pushEvent({ state: 'doing', actor: 'Wingman', title: 'Finding a time and place', detail: 'Checking your evenings against a spot between your two neighborhoods.' });
+      pushEvent({
+        state: 'doing',
+        stage: 'planning',
+        kind: 'status',
+        direction: 'internal',
+        pose: 'thinking',
+        actor: 'Wingman',
+        title: 'Finding a time and place',
+        detail: 'Checking your evenings against a spot between your two neighborhoods.',
+        counterpart: CANDIDATE.name,
+      });
       demoTimer = setTimeout(() => {
         pushApproval({
           action: 'book_date',
@@ -194,7 +257,17 @@ function advanceDemo(justResolved: PendingApproval) {
 
   if (justResolved.action === 'book_date') {
     demoTimer = setTimeout(() => {
-      pushEvent({ state: 'did', actor: 'Wingman', title: 'Matched', detail: 'Invite sent for Thursday, 7:00 PM at The Anchor. Both sides confirmed.' });
+      pushEvent({
+        state: 'did',
+        stage: 'matched',
+        kind: 'status',
+        direction: 'internal',
+        pose: 'matched',
+        actor: 'Wingman',
+        title: 'Matched',
+        detail: 'Invite sent for Thursday, 7:00 PM at The Anchor. Both sides confirmed.',
+        counterpart: CANDIDATE.name,
+      });
       demoStep = 0;
     }, 900);
   }
@@ -212,24 +285,62 @@ export function runDemo(): void {
   resetDemo();
   demoStep = 1;
 
-  pushEvent({ state: 'doing', actor: 'Wingman', title: 'Reading your profile', detail: 'Recalling what you already told me before I do anything else.' });
+  pushEvent({
+    state: 'doing',
+    stage: 'profile',
+    kind: 'status',
+    direction: 'internal',
+    pose: 'learning',
+    actor: 'Wingman',
+    title: 'Reading your profile',
+    detail: 'Recalling what you already told me before I do anything else.',
+  });
 
   demoTimer = setTimeout(() => {
-    pushEvent({ state: 'doing', actor: 'Wingman', title: 'Comparing you against 5 candidates', detail: 'Weighing shared interests, schedules, and dealbreakers.' });
+    pushEvent({
+      state: 'doing',
+      stage: 'preferences',
+      kind: 'status',
+      direction: 'internal',
+      pose: 'thinking',
+      actor: 'Wingman',
+      title: 'Understanding your preferences',
+      detail: 'Checking the interests, schedules, and dealbreakers you approved for matching.',
+    });
 
     demoTimer = setTimeout(() => {
-      pushEvent({ state: 'did', actor: 'Wingman', title: 'Found a strong match: Maya', detail: 'You both do the climbing-gym-then-record-store thing on Saturdays.' });
+      pushEvent({
+        state: 'did',
+        stage: 'discovery',
+        kind: 'status',
+        direction: 'internal',
+        pose: 'thinking',
+        actor: 'Wingman',
+        title: 'Found a demo candidate: Maya',
+        detail: 'This scripted persona exercises the explainable-match flow; production contact still requires an age-band safety check.',
+        counterpart: CANDIDATE.name,
+      });
 
       demoTimer = setTimeout(() => {
-        pushEvent({ state: 'doing', actor: 'Wingman', title: "Opening a conversation with Maya's wingman", detail: 'Starting at the public level — nothing identifying yet.' });
+        pushEvent({
+          state: 'doing',
+          stage: 'negotiation',
+          kind: 'status',
+          direction: 'internal',
+          pose: 'negotiating',
+          actor: 'Wingman',
+          title: "Preparing a simulated agent exchange",
+          detail: 'Demo-only channel. Starting at the public level — nothing identifying leaves until you approve it.',
+          counterpart: "Maya's Wingman",
+        });
 
         demoTimer = setTimeout(() => {
           pushApproval({
             action: 'share_detail',
             candidateId: CANDIDATE.id,
             candidateName: CANDIDATE.name,
-            sentence: `Tell Maya's wingman you climb and collect vinyl?`,
-            fields: ['hobbies', 'tastes'],
+            sentence: `Tell Maya's wingman you're into hands-on projects and figuring out how things work?`,
+            fields: ['vibe', 'hobbies'],
           });
         }, 1200);
       }, 1400);

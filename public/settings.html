@@ -142,6 +142,34 @@
   .gate { font-size: 0.8rem; color: var(--t4); }
   .gate b { color: var(--amber); }
   .fatal { color: var(--purple); }
+
+  /* Light dashboard skin shared with the React app. */
+  :root {
+    color-scheme: light; --bg:#f7f8fc; --panel:rgba(255,255,255,.92); --inset:#f7f6fb;
+    --line:rgba(55,49,84,.09); --t1:#28243b; --t2:#5f5a70; --t3:#777286; --t4:#9994a5;
+    --blue:#655df1; --green:#38b985; --amber:#f1b932; --purple:#9a6ff0;
+  }
+  body {
+    background:radial-gradient(circle at 8% 15%,#dff8e7 0,transparent 28rem),
+               radial-gradient(circle at 92% 8%,#e4dcff 0,transparent 30rem),var(--bg);
+  }
+  .brand i { color:var(--blue); }
+  header nav a,.ghost,.seg button,.tab,input[type=text] { background:rgba(255,255,255,.78); }
+  header nav a,.ghost,.seg button,.tab,input[type=text],.card {
+    border-color:var(--line); box-shadow:0 10px 35px rgba(63,55,101,.05);
+  }
+  .card { border-radius:24px; corner-shape:squircle; padding:1.35rem; box-shadow:0 20px 55px rgba(63,55,101,.08); }
+  .seg button,input[type=text],.tab { border-radius:13px; corner-shape:squircle; }
+  .seg button[aria-pressed=true] { background:#efedff; border-color:#cfcaff; color:#5f56dc; }
+  input[type=text]:focus { outline:0; border-color:#968ef6; box-shadow:0 0 0 4px rgba(103,92,245,.11); }
+  input[type=range] { accent-color:#655df1; }
+  .rangeRow output,.gate b { color:#655df1; }
+  .tab[aria-selected=true] { border-color:#655df1; color:#fff; background:linear-gradient(135deg,#625bf2,#a16ff3); }
+  .save {
+    border:0; color:#fff; background:linear-gradient(135deg,#625bf2,#a16ff3);
+    box-shadow:0 14px 30px rgba(99,87,238,.24); transition:transform .2s,box-shadow .2s;
+  }
+  .save:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 18px 38px rgba(99,87,238,.3); }
 </style>
 </head>
 <body>

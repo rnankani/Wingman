@@ -12,6 +12,7 @@ import { DEFAULT_BUDGET, type FieldName, type Profile } from '../src/types.js';
 function persona(userId: string, fields: Partial<Record<FieldName, string>>): Omit<Profile, 'updatedAt'> {
   return {
     userId,
+    displayName: fields.name ?? userId,
     fields,
     isPersona: true,
     budget: structuredClone(DEFAULT_BUDGET),
