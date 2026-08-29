@@ -2,177 +2,123 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Wingman — dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Wingman — status</title>
 <link rel="icon" href="/brand/icon-32.png" />
 <link rel="stylesheet" href="/brand/wingman.css" />
+<link rel="stylesheet" href="/theme.css" />
 <style>
-  :root {
-    --yolk: #fdcf2e;
-    --beak: #ff7709;
-    --plum: #48074f;
-    --plum-soft: #873f94;
-    --ink: #1b1020;
-    --paper: #fffaf0;
-    --card: #ffffff;
-    --line: rgba(72, 7, 79, 0.14);
-    --ok: #1a7f4b;
-    --warn: #b5651d;
-    --down: #b3123c;
+  body { padding: 30px 24px 70px; }
+  .wrap { max-width: 1040px; margin: 0 auto; }
 
-    --l0: #2f9e6b;
-    --l1: #2b7fc4;
-    --l2: #c07a12;
-    --l3: #b3123c;
+  header { display: flex; align-items: center; gap: 13px; margin-bottom: 8px; }
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 10px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, var(--yolk), var(--yolk-deep));
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.5), inset 0 -1px 0 oklch(0.55 0.12 70 / 0.5),
+                var(--cast-1), 0 5px 14px -5px oklch(0.8 0.16 88 / 0.55);
   }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: radial-gradient(1200px 480px at 50% -18%, #fff3cc 0%, transparent 60%), var(--paper);
-    color: var(--ink);
-    font: 15px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
-    padding: 1.5rem 1.25rem 5rem;
-  }
-  .wrap { max-width: 1080px; margin: 0 auto; }
+  .brand-mark svg { width: 19px; height: 19px; color: var(--yolk-ink); }
+  h1 { margin: 0; font-size: 27px; font-weight: 600; letter-spacing: -0.024em; }
+  .sub { font-size: 13.5px; color: var(--text-4); margin-top: 1px; }
+  header .right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .tick { font-size: 13px; color: var(--text-4); font-variant-numeric: tabular-nums; }
+  .lede { color: var(--text-3); font-size: 15px; margin: 0 0 28px; max-width: 66ch; }
 
-  /* ---------------------------------------------------------------- header */
-  header { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 0.35rem; }
-  header .chikny { --chikny-scale: 0.5; }
-  .brand { font-weight: 800; font-size: 1.9rem; letter-spacing: -0.04em; line-height: 1; }
-  .brand b { color: var(--plum); } .brand i { font-style: normal; color: var(--beak); }
-  .sub { color: var(--plum-soft); font-size: 0.85rem; margin-top: 0.15rem; }
-  header nav { margin-left: auto; display: flex; gap: 0.4rem; align-items: center; }
-  header nav a, .ghost {
-    font-size: 0.82rem; text-decoration: none; color: var(--plum); background: #fff;
-    border: 1px solid var(--line); border-radius: 999px; padding: 0.35rem 0.8rem; font-weight: 600;
-    cursor: pointer;
-  }
-  #tick { color: var(--plum-soft); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+  section { margin-bottom: 30px; }
+  section > .eyebrow { display: block; margin-bottom: 11px; padding-left: 3px; }
 
-  h2 {
-    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.16em;
-    color: var(--plum-soft); font-weight: 700; margin: 2.2rem 0 0.75rem;
-  }
-  h2:first-of-type { margin-top: 1.6rem; }
+  .checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+  .check { padding: 15px 16px; display: flex; gap: 12px; align-items: flex-start; }
+  .check .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; margin-top: 6px; box-shadow: 0 0 10px currentColor; }
+  .check .dot.ok   { background: var(--green); color: oklch(0.72 0.13 145 / 0.7); }
+  .check .dot.warn { background: var(--amber); color: oklch(0.76 0.13 75 / 0.7); }
+  .check .dot.down { background: var(--red);   color: oklch(0.68 0.17 25 / 0.7); }
+  .check b { display: block; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+  .check p { margin: 3px 0 0; font-size: 13.8px; color: var(--text-3); line-height: 1.45; overflow-wrap: anywhere; }
+  .fix { display: inline-block; margin-top: 9px; font-size: 12.5px; background: var(--well); box-shadow: var(--sink); border-radius: 8px; padding: 5px 9px; color: var(--yolk); overflow-wrap: anywhere; }
 
-  .card {
-    background: var(--card); border: 1px solid var(--line);
-    border-radius: 14px; padding: 1rem 1.1rem;
-  }
+  .tools { padding: 4px 0; overflow-x: auto; }
+  .trow { display: grid; grid-template-columns: minmax(150px,1fr) 120px 110px minmax(200px,2fr); gap: 14px; align-items: center; padding: 13px 18px; }
+  .trow + .trow { border-top: 1px solid oklch(0 0 0 / 0.28); box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.04); }
+  .thead { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-4); }
+  .tname { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; font-weight: 600; }
+  .tdesc { font-size: 13.5px; color: var(--text-3); }
+  .gate { font-size: 13.5px; font-weight: 600; }
+  .gate.on { color: var(--yolk); } .gate.off { color: var(--text-4); font-weight: 500; }
 
-  /* --------------------------------------------------------------- checks */
-  .checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0.6rem; }
-  .check { display: flex; gap: 0.6rem; align-items: flex-start; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 0.42rem; flex: none; }
-  .dot.ok { background: var(--ok); }
-  .dot.warn { background: var(--warn); }
-  .dot.down { background: var(--down); }
-  .check b { display: block; font-size: 0.86rem; }
-  .check span { color: var(--plum-soft); font-size: 0.76rem; overflow-wrap: anywhere; }
-  .check code {
-    display: inline-block; margin-top: 0.3rem; font-size: 0.72rem; background: #fff6e0;
-    border: 1px solid #f2dca6; border-radius: 6px; padding: 0.12rem 0.4rem; color: #7a4b00;
-    overflow-wrap: anywhere;
-  }
-
-  /* ---------------------------------------------------------------- tools */
-  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  th {
-    text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--plum-soft); font-weight: 700; padding: 0 0.6rem 0.5rem 0;
-  }
-  td { padding: 0.5rem 0.6rem 0.5rem 0; border-top: 1px solid var(--line); vertical-align: top; }
-  td.name { font: 600 0.85rem ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; }
-  td.desc { color: var(--plum-soft); font-size: 0.78rem; }
-  .tag {
-    display: inline-block; font: 600 0.7rem ui-monospace, Menlo, monospace;
-    padding: 0.1rem 0.45rem; border-radius: 5px; white-space: nowrap;
-  }
-  .tag.ro { background: #e7f6ee; color: var(--ok); }
-  .tag.w  { background: #fdeee2; color: var(--warn); }
-  .tag.d  { background: #fde7ed; color: var(--down); }
-  .tag.u  { background: #fde7ed; color: var(--down); }
-  .gate { font-size: 0.78rem; font-weight: 650; white-space: nowrap; }
-  .gate.on { color: var(--down); } .gate.off { color: var(--plum-soft); font-weight: 500; }
-
-  /* ------------------------------------------------------------- profiles */
-  .plist { display: grid; gap: 0.8rem; }
-  .p-head { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
-  .p-head .chikny { --chikny-scale: 0.5; margin: -0.5rem 0; }
-  .who { font-weight: 750; font-size: 1.05rem; }
-  .pill {
-    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
-    padding: 0.15rem 0.5rem; border-radius: 999px; background: #f4ecf6; color: var(--plum-soft);
-  }
-  .meter { margin-left: auto; font-size: 0.76rem; color: var(--plum-soft); font-variant-numeric: tabular-nums; }
-
-  .budget { display: flex; gap: 0.35rem; flex-wrap: wrap; margin: 0.75rem 0 0.15rem; }
-  .lv {
-    font: 600 0.72rem ui-monospace, Menlo, monospace; padding: 0.2rem 0.5rem;
-    border-radius: 6px; border: 1px solid var(--line); background: #fff;
-  }
-  .lv em { font-style: normal; opacity: 0.75; }
-  .lv[data-policy="free"]  { border-color: #b7e4ca; background: #eefaf3; color: var(--ok); }
-  .lv[data-policy="ask"]   { border-color: #f2dca6; background: #fff6e6; color: var(--warn); }
-  .lv[data-policy="never"] { border-color: #f5bfcd; background: #fdeef2; color: var(--down); }
-
-  .never { margin-top: 0.5rem; font-size: 0.78rem; color: var(--plum-soft); }
-  .never b { color: var(--down); }
-
-  .ladder { margin-top: 0.9rem; border-top: 1px solid var(--line); padding-top: 0.8rem; }
-  .tabs { display: flex; gap: 0.3rem; margin-bottom: 0.7rem; flex-wrap: wrap; }
+  .plist { display: grid; grid-template-columns: repeat(auto-fill, minmax(430px, 1fr)); gap: 18px; }
+  .profile { padding: 17px 18px; }
+  .p-head { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
+  .p-av { width: 40px; height: 40px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; box-shadow: var(--lip), var(--cast-1), 0 5px 12px -4px oklch(0 0 0 / 0.5); }
+  .p-name { font-size: 17.5px; font-weight: 600; letter-spacing: -0.014em; }
+  .p-meter { margin-left: auto; font-size: 13px; color: var(--text-4); text-align: right; font-variant-numeric: tabular-nums; }
+  .budget { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 14px; }
+  .never { margin-top: 10px; font-size: 13.5px; color: var(--text-4); }
+  .never b { color: var(--yolk); font-weight: 600; }
+  .ladder { margin-top: 15px; border-top: 1px solid oklch(0 0 0 / 0.3); box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.05); padding-top: 14px; }
+  .tabs { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 13px; }
   .tab {
-    font: 600 0.76rem ui-monospace, Menlo, monospace; padding: 0.28rem 0.6rem;
-    border-radius: 7px; border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--plum);
+    padding: 7px 13px; border-radius: 9px; cursor: pointer; font-size: 13.5px; font-weight: 600;
+    color: var(--text-3); border: 1px solid var(--line);
+    background: linear-gradient(180deg, oklch(0.325 0 0), oklch(0.292 0 0));
+    box-shadow: var(--lip-soft), var(--cast-1); transition: transform .1s ease, color .13s ease;
   }
-  .tab[aria-selected="true"] { background: var(--plum); color: #fff; border-color: var(--plum); }
-
-  .kv { display: grid; grid-template-columns: minmax(110px, auto) 1fr; gap: 0.3rem 0.9rem; font-size: 0.84rem; }
-  .kv dt { font: 600 0.78rem ui-monospace, Menlo, monospace; }
-  .kv dd { margin: 0; }
-  .kv dt::after { content: ""; }
-  .lvl { font-size: 0.62rem; font-weight: 700; padding: 0.05rem 0.3rem; border-radius: 4px; margin-left: 0.3rem; vertical-align: 1px; }
-  .lvl.L0 { background: #e7f6ee; color: var(--l0); }
-  .lvl.L1 { background: #e6f1fa; color: var(--l1); }
-  .lvl.L2 { background: #fdf2df; color: var(--l2); }
-  .lvl.L3 { background: #fde7ed; color: var(--l3); }
-
-  .withheld { margin-top: 0.8rem; font-size: 0.78rem; color: var(--plum-soft); }
-  .withheld code { font-size: 0.74rem; background: #f6f1f7; border-radius: 4px; padding: 0.06rem 0.3rem; }
-  .redacted { color: var(--down); font-weight: 600; }
-  .empty { color: var(--plum-soft); font-style: italic; font-size: 0.85rem; }
-
-  .hollow {
-    text-align: center; padding: 2.5rem 1rem; color: var(--plum-soft);
+  .tab:hover { transform: translateY(-1px); color: var(--text); }
+  .tab[aria-selected="true"] {
+    color: var(--yolk-ink); border-color: var(--yolk-edge);
+    background: linear-gradient(180deg, var(--yolk), var(--yolk-deep));
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.5), var(--cast-1), 0 5px 13px -5px oklch(0.8 0.16 88 / 0.55);
   }
-  .hollow .chikny { --chikny-scale: 0.5; margin: 0 auto 0.6rem; }
+  .seen { font-size: 13.5px; color: var(--text-4); margin-bottom: 10px; }
+  .kv { display: grid; grid-template-columns: minmax(96px, auto) 1fr; gap: 8px 14px; font-size: 14.5px; }
+  .kv dt { font-weight: 600; color: var(--text-2); }
+  .kv dd { margin: 0; color: var(--text-3); }
+  .lvl { font-size: 11px; font-weight: 700; padding: 1px 5px; border-radius: 5px; margin-left: 6px; vertical-align: 1.5px; }
+  .lvl.L0 { color: var(--text-2); background: oklch(1 0 0 / 0.09); }
+  .lvl.L1 { color: var(--blue);   background: color-mix(in oklch, var(--blue) 20%, transparent); }
+  .lvl.L2 { color: var(--amber);  background: color-mix(in oklch, var(--amber) 20%, transparent); }
+  .lvl.L3 { color: var(--purple); background: color-mix(in oklch, var(--purple) 20%, transparent); }
+  .note { margin-top: 12px; font-size: 13px; color: var(--text-4); }
+  .note code { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; background: var(--well); box-shadow: var(--sink); border-radius: 6px; padding: 2px 6px; margin-right: 4px; display: inline-block; }
+  .note code.red { color: var(--red); }
+  .hollow { border: 1px dashed oklch(1 0 0 / 0.1); border-radius: var(--r-card); padding: 30px 16px; text-align: center; font-size: 14.5px; color: var(--text-4); box-shadow: inset 0 1px 4px oklch(0 0 0 / 0.25); }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header>
-    <div class="chikny chikny--logo" role="img" aria-label="Wingman mascot"></div>
-    <div>
-      <div class="brand"><b>Wing</b><i>man</i></div>
-      <div class="sub">engineering status · localhost:3001</div>
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c3-6 9-9 18-9-1 6-4 10-9 12l-3 6-2-6-6-3z"/></svg>
     </div>
-    <nav>
-      <span id="tick"></span>
-      <button class="ghost" id="refresh">Refresh</button>
-      <a href="/">Cockpit</a>
-      <a href="/brand/">Brand</a>
-    </nav>
+    <div>
+      <h1>Status</h1>
+      <div class="sub" id="host">engineering readout</div>
+    </div>
+    <div class="right">
+      <span class="tick" id="tick"></span>
+      <button class="btn" id="refresh">Refresh</button>
+      <a class="btn btn-yolk" href="/">Open app</a>
+    </div>
   </header>
+  <p class="lede">The full engineering readout in one scroll: whether the pipeline is actually wired, which tools TrueForge can see and which of them stop for approval, and the raw disclosure ladder for every profile in the store.</p>
 
-  <h2>Pipeline</h2>
-  <div class="card"><div class="checks" id="checks"></div></div>
+  <section>
+    <span class="eyebrow">Pipeline</span>
+    <div id="checks"></div>
+  </section>
 
-  <h2>Tool surface <span id="policyNote" style="text-transform:none;letter-spacing:0;font-weight:500"></span></h2>
-  <div class="card" id="toolsCard"></div>
+  <section>
+    <span class="eyebrow" id="policyNote">Tool surface</span>
+    <div id="tools"></div>
+  </section>
 
-  <h2>Profiles</h2>
-  <div class="plist" id="profiles"></div>
+  <section>
+    <span class="eyebrow">Profiles</span>
+    <div id="profiles"></div>
+  </section>
 
 </div>
 
@@ -180,116 +126,97 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-let schema = { levels: ['L0','L1','L2','L3'], levelLabels: {}, fieldLevels: {} };
-const selectedLevel = new Map();   // userId -> level, survives refresh
+const KLASS_TONE = { '@read-only': 'green', '@write': 'amber', '@destructive': 'red', '@unannotated': 'red' };
+const TONE = { maya: 'blue', devon: 'green', priya: 'purple', sam: 'amber', lena: 'gray' };
 
-const TAG = { '@read-only': 'ro', '@write': 'w', '@destructive': 'd', '@unannotated': 'u' };
+let schema = { levels: ['L0','L1','L2','L3'], levelLabels: {}, fieldLevels: {} };
+let profiles = [];
+const levelOf = new Map();
 
 function renderChecks(checks) {
-  $('checks').innerHTML = checks.map(c => `
-    <div class="check">
+  $('checks').innerHTML = `<div class="checks">${checks.map(c => `
+    <div class="card check">
       <div class="dot ${c.state}"></div>
-      <div>
+      <div style="min-width:0">
         <b>${esc(c.label)}</b>
-        <span>${esc(c.detail)}</span>
-        ${c.fix ? `<code>${esc(c.fix)}</code>` : ''}
+        <p>${esc(c.detail)}</p>
+        ${c.fix ? `<span class="fix mono">${esc(c.fix)}</span>` : ''}
       </div>
-    </div>`).join('');
+    </div>`).join('')}</div>`;
 }
 
 function renderTools(tools, policy) {
   $('policyNote').textContent = policy
-    ? `— require_approval_for_tools: ${policy.length ? policy.join(', ') : '(none)'}`
-    : '— no agent yet, so no policy in force';
+    ? `Tool surface — gated: ${policy.length ? policy.join(', ') : 'none'}`
+    : 'Tool surface — no agent yet, so no policy in force';
 
-  if (!tools.length) {
-    $('toolsCard').innerHTML = `<div class="empty">TrueForge cannot see any tools.</div>`;
-    return;
-  }
-  $('toolsCard').innerHTML = `
-    <table>
-      <thead><tr><th>Tool</th><th>Class</th><th>Approval</th><th>What it does</th></tr></thead>
-      <tbody>${tools.map(t => `
-        <tr>
-          <td class="name">${esc(t.name)}</td>
-          <td><span class="tag ${TAG[t.klass] ?? 'u'}">${esc(t.klass)}</span></td>
-          <td class="gate ${t.gated ? 'on' : 'off'}">${t.gated ? 'asks you' : 'autonomous'}</td>
-          <td class="desc">${esc(t.description)}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
+  $('tools').innerHTML = tools.length ? `
+    <div class="card tools">
+      <div class="trow thead"><span>Tool</span><span>Class</span><span>Approval</span><span>What it does</span></div>
+      ${tools.map(t => `
+        <div class="trow">
+          <span class="tname">${esc(t.name)}</span>
+          <span><span class="tag tag-${KLASS_TONE[t.klass] ?? 'gray'}">${esc(t.klass)}</span></span>
+          <span class="gate ${t.gated ? 'on' : 'off'}">${t.gated ? 'Asks you' : 'Autonomous'}</span>
+          <span class="tdesc">${esc(t.description)}</span>
+        </div>`).join('')}
+    </div>`
+    : `<div class="hollow">TrueForge cannot see any tools.<br><span class="fix mono">npm run setup</span></div>`;
 }
 
-function renderProfiles(profiles) {
+function renderProfiles() {
   if (!profiles.length) {
-    $('profiles').innerHTML = `
-      <div class="card hollow">
-        <div class="chikny chikny--resting"></div>
-        <div>No profiles yet. Talk to the agent and it will write one here.</div>
-      </div>`;
+    $('profiles').innerHTML = `<div class="hollow">No profiles yet.<br><span class="fix mono">npm run seed</span></div>`;
     return;
   }
+  $('profiles').innerHTML = `<div class="plist">${profiles.map(p => {
+    const lvl = levelOf.get(p.userId) ?? 'L0';
+    const v = p.views[lvl];
+    const tone = TONE[p.userId] ?? 'gray';
+    const initial = (p.fields.name || p.userId).trim()[0].toUpperCase();
 
-  $('profiles').innerHTML = profiles.map(p => {
-    const level = selectedLevel.get(p.userId) ?? 'L0';
-    const view = p.views[level];
-    const entries = Object.entries(view.fields);
+    const budget = schema.levels.map(l => {
+      const pol = p.budget.levels[l];
+      const t = pol === 'free' ? 'green' : pol === 'ask' ? 'amber' : 'red';
+      return `<span class="tag tag-${t}">${l} ${esc(schema.levelLabels[l] ?? '')} · ${esc(pol)}</span>`;
+    }).join('');
 
-    const budget = schema.levels.map(l => `
-      <span class="lv" data-policy="${esc(p.budget.levels[l])}">
-        ${l} <em>${esc(schema.levelLabels[l] ?? '')}</em> · ${esc(p.budget.levels[l])}
-      </span>`).join('');
+    const tabs = schema.levels.map(l =>
+      `<button class="tab" role="tab" aria-selected="${l === lvl}" data-user="${esc(p.userId)}" data-level="${l}">${l} ${esc(schema.levelLabels[l] ?? '')}</button>`).join('');
 
-    const tabs = schema.levels.map(l => `
-      <button class="tab" role="tab" aria-selected="${l === level}"
-              data-user="${esc(p.userId)}" data-level="${l}">
-        ${l} ${esc(schema.levelLabels[l] ?? '')}
-      </button>`).join('');
-
+    const entries = Object.entries(v.fields);
     const rows = entries.length
-      ? `<dl class="kv">${entries.map(([k, v]) => `
-          <dt>${esc(k)}<span class="lvl ${schema.fieldLevels[k]}">${schema.fieldLevels[k]}</span></dt>
-          <dd>${esc(v)}</dd>`).join('')}</dl>`
-      : `<div class="empty">Nothing visible at ${level}.</div>`;
+      ? `<dl class="kv">${entries.map(([k, val]) =>
+          `<dt>${esc(k)}<span class="lvl ${schema.fieldLevels[k]}">${schema.fieldLevels[k]}</span></dt><dd>${esc(val)}</dd>`).join('')}</dl>`
+      : `<div class="seen">Nothing is visible at ${lvl}.</div>`;
 
     return `
-      <div class="card">
+      <div class="card profile">
         <div class="p-head">
-          <div class="chikny chikny--${p.isPersona ? 'idle' : 'learning'}"></div>
-          <span class="who">${esc(p.userId)}</span>
-          <span class="pill">${p.isPersona ? 'persona' : 'you'}</span>
-          <span class="meter">${p.known}/${p.total} fields · updated ${new Date(p.updatedAt).toLocaleTimeString()}</span>
+          <div class="p-av tag-${tone}">${esc(initial)}</div>
+          <div>
+            <div class="p-name">${esc(p.fields.name || p.userId)}</div>
+            <div class="seen" style="margin:0">${p.isPersona ? 'Seeded persona' : 'You'} · ${esc(p.userId)}</div>
+          </div>
+          <div class="p-meter">${p.known}/${p.total} fields<br>${new Date(p.updatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
         </div>
-
         <div class="budget">${budget}</div>
-        <div class="never">
-          never share:
-          ${p.budget.neverShare.length
-            ? p.budget.neverShare.map(n => `<b>${esc(n)}</b>`).join(', ')
-            : '<span class="empty">nothing</span>'}
-          · forwardness ${p.budget.forwardness}/5
-        </div>
-
+        <div class="never">Never share: ${p.budget.neverShare.length ? p.budget.neverShare.map(n => `<b>${esc(n)}</b>`).join(', ') : 'nothing'} · forwardness ${p.budget.forwardness}/5</div>
         <div class="ladder">
           <div class="tabs" role="tablist">${tabs}</div>
-          <div><strong style="font-size:.82rem">A stranger's agent at ${level} sees:</strong></div>
-          <div style="margin-top:.5rem">${rows}</div>
-          ${view.redacted.length ? `<div class="withheld">stripped by never-share: ${view.redacted.map(f => `<code class="redacted">${esc(f)}</code>`).join(' ')}</div>` : ''}
-          ${view.withheldAbove.length ? `<div class="withheld">above this level: ${view.withheldAbove.map(f => `<code>${esc(f)}</code>`).join(' ')}</div>` : ''}
+          <div class="seen">A stranger’s agent at ${lvl} sees:</div>
+          ${rows}
+          ${v.redacted.length ? `<div class="note">Stripped by never-share: ${v.redacted.map(f => `<code class="red">${esc(f)}</code>`).join('')}</div>` : ''}
+          ${v.withheldAbove.length ? `<div class="note">Above this level: ${v.withheldAbove.map(f => `<code>${esc(f)}</code>`).join('')}</div>` : ''}
         </div>
       </div>`;
-  }).join('');
+  }).join('')}</div>`;
 
-  // Level switching is local — no refetch, since all four views are already here.
-  document.querySelectorAll('.tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      selectedLevel.set(btn.dataset.user, btn.dataset.level);
-      renderProfiles(lastProfiles);
-    });
-  });
+  $('profiles').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+    levelOf.set(b.dataset.user, b.dataset.level);
+    renderProfiles();
+  }));
 }
-
-let lastProfiles = [];
 
 async function load() {
   try {
@@ -298,13 +225,13 @@ async function load() {
       fetch('/api/profiles').then(r => r.json()),
       fetch('/api/schema').then(r => r.json()),
     ]);
-    schema = sc;
-    lastProfiles = pr.profiles;
+    schema = sc; profiles = pr.profiles;
+    $('host').textContent = `engineering readout · ${st.trueforgeUrl}`;
     renderChecks(st.checks);
     renderTools(st.tools, st.approvalPolicy);
-    renderProfiles(pr.profiles);
-    $('tick').textContent = 'updated ' + new Date().toLocaleTimeString();
-  } catch (e) {
+    renderProfiles();
+    $('tick').textContent = 'updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  } catch {
     $('tick').textContent = 'refresh failed';
   }
 }
