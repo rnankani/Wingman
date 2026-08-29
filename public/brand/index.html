@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wingman</title>
+<link rel="icon" href="/brand/icon-32.png" />
+<link rel="apple-touch-icon" href="/brand/icon-180.png" />
+<link rel="stylesheet" href="/brand/wingman.css" />
+<style>
+  :root {
+    --yolk: #fdcf2e;
+    --beak: #ff7709;
+    --plum: #48074f;
+    --plum-soft: #873f94;
+    --ink: #1b1020;
+    --paper: #fffaf0;
+    --line: rgba(72, 7, 79, 0.16);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(1100px 520px at 50% -12%, #fff2c9 0%, transparent 62%),
+      var(--paper);
+    color: var(--ink);
+    font: 16px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: clamp(1.5rem, 5vw, 4rem) 1.25rem 4rem;
+  }
+
+  /* Not flex: "Wing" and "man" are one word in two colours, and a flex gap
+     would put a literal space between them. */
+  .wordmark {
+    font-weight: 800;
+    font-size: clamp(2.6rem, 8vw, 4.4rem);
+    letter-spacing: -0.045em;
+    line-height: 1;
+    margin: 0.75rem 0 0;
+  }
+  .wordmark b { color: var(--plum); font-weight: 800; }
+  .wordmark i {
+    font-style: normal;
+    color: var(--beak);
+    -webkit-text-stroke: 0;
+  }
+
+  .tagline {
+    margin: 0.85rem 0 0;
+    max-width: 34ch;
+    text-align: center;
+    color: var(--plum-soft);
+    font-size: clamp(1rem, 2.4vw, 1.15rem);
+    text-wrap: balance;
+  }
+
+  /* The mascot sits on a shadow so it reads as standing, not floating. */
+  .stage { position: relative; display: grid; place-items: end center; }
+  .stage::after {
+    content: "";
+    position: absolute;
+    bottom: 6px;
+    width: 46%;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(72, 7, 79, 0.18);
+    filter: blur(5px);
+  }
+  .stage .chikny { position: relative; z-index: 1; }
+
+  .poses {
+    margin-top: clamp(2.5rem, 6vw, 4rem);
+    width: 100%;
+    max-width: 940px;
+  }
+  .poses h2 {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--plum-soft);
+    margin: 0 0 1rem;
+    font-weight: 700;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+    gap: 0.75rem;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 0.9rem 0.75rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    box-shadow: 0 1px 0 rgba(72, 7, 79, 0.05);
+  }
+  .card .chikny { --chikny-scale: 0.5; }
+  .card code {
+    font: 600 0.8rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--plum);
+  }
+  .card small {
+    color: var(--plum-soft);
+    font-size: 0.72rem;
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  .swatches { display: flex; gap: 0.4rem; margin-top: 2.5rem; flex-wrap: wrap; justify-content: center; }
+  .sw { width: 46px; height: 46px; border-radius: 10px; border: 1px solid var(--line); }
+
+  .links { margin-top: 2.5rem; display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
+  .links a {
+    display: inline-block;
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--plum);
+    text-decoration: none;
+    font-weight: 650;
+    font-size: 0.9rem;
+  }
+  .links a:hover { border-color: var(--plum-soft); }
+  .links a[aria-disabled="true"] { opacity: 0.45; pointer-events: none; }
+</style>
+</head>
+<body>
+
+  <div class="stage">
+    <div class="chikny chikny--logo" style="--chikny-scale: 1.5" role="img"
+         aria-label="Chikny, the Wingman mascot: a small yellow chick with its wings crossed, looking smug"></div>
+  </div>
+
+  <h1 class="wordmark"><b>Wing</b><i>man</i></h1>
+  <p class="tagline">Your agent talks to their agent — and never says more than you allowed.</p>
+
+  <section class="poses">
+    <h2>Mascot states</h2>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <div class="swatches" id="swatches"></div>
+
+  <nav class="links">
+    <!-- Phase 4 builds this. Disabled rather than linking to a 404. -->
+    <a href="/settings" aria-disabled="true" title="Coming in phase 4">Consent budget</a>
+    <a href="/health">Health</a>
+    <a href="http://localhost:8790">TrueForge</a>
+  </nav>
+
+<script type="module">
+  const res = await fetch('/brand/poses.json');
+  const { poses, palette } = await res.json();
+
+  document.getElementById('grid').innerHTML = Object.entries(poses)
+    .map(([name, p]) => `
+      <div class="card">
+        <div class="chikny chikny--${name}"></div>
+        <code>${name}</code>
+        <small>${p.meaning}</small>
+      </div>`)
+    .join('');
+
+  document.getElementById('swatches').innerHTML = Object.entries(palette)
+    .map(([name, hex]) => `<div class="sw" style="background:${hex}" title="${name} ${hex}"></div>`)
+    .join('');
+</script>
+</body>
+</html>
