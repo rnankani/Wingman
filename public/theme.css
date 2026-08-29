@@ -1,0 +1,146 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Wingman shared theme — grayscale surfaces + duck yellow.
+   Single source of truth so /  and /status can never drift apart.
+   Depth model: light falls from above. Every surface is raised or recessed.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* surfaces */
+  --bg:        oklch(0.26 0 0);
+  --well:      oklch(0.243 0 0);
+  --panel:     oklch(0.301 0 0);
+  --panel-hi:  oklch(0.329 0 0);
+  --panel-lo:  oklch(0.288 0 0);
+  --inset:     oklch(0.269 0 0);
+  --line:      oklch(1 0 0 / 0.07);
+
+  /* text */
+  --text:      oklch(0.907 0 0);
+  --text-2:    oklch(0.798 0 0);
+  --text-3:    oklch(0.683 0 0);
+  --text-4:    oklch(0.62 0 0);
+
+  /* brand */
+  --yolk:      oklch(0.865 0.163 94);
+  --yolk-deep: oklch(0.775 0.152 78);
+  --yolk-edge: oklch(0.68 0.14 74);
+  --yolk-ink:  oklch(0.30 0.055 78);
+
+  /* accents */
+  --blue:      oklch(0.72 0.14 250);
+  --green:     oklch(0.72 0.13 145);
+  --amber:     oklch(0.76 0.13 75);
+  --purple:    oklch(0.72 0.14 300);
+  --red:       oklch(0.68 0.17 25);
+  --gray:      oklch(0.72 0 0);
+
+  /* depth */
+  --lip:       inset 0 1px 0 oklch(1 0 0 / 0.09);
+  --lip-soft:  inset 0 1px 0 oklch(1 0 0 / 0.06);
+  --keel:      inset 0 -1px 0 oklch(0 0 0 / 0.32);
+  --cast-1:    0 1px 2px oklch(0 0 0 / 0.32);
+  --cast-2:    0 4px 10px -3px oklch(0 0 0 / 0.38);
+  --cast-3:    0 16px 34px -12px oklch(0 0 0 / 0.52);
+  --raise:     var(--lip), var(--keel), var(--cast-1), var(--cast-2), var(--cast-3);
+  --raise-hi:  var(--lip), var(--keel), 0 2px 4px oklch(0 0 0 / 0.34),
+               0 10px 20px -5px oklch(0 0 0 / 0.44), 0 26px 52px -16px oklch(0 0 0 / 0.6);
+  --sink:      inset 0 2px 5px oklch(0 0 0 / 0.42), inset 0 -1px 0 oklch(1 0 0 / 0.04);
+
+  --r-panel: 20px; --r-card: 16px; --r-ctl: 11px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(900px 520px at 14% -8%, oklch(0.865 0.163 94 / 0.05), transparent 65%),
+    var(--bg);
+  color: var(--text);
+  font-family: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
+               -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+svg { display: block; }
+
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-thumb { background: oklch(1 0 0 / 0.11); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ───────────────────────────────────────────────────────────────── controls */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border-radius: var(--r-ctl); padding: 9px 17px; cursor: pointer;
+  font-size: 14.5px; font-weight: 550; letter-spacing: -0.005em; color: var(--text-2);
+  background: linear-gradient(180deg, oklch(0.335 0 0), oklch(0.295 0 0));
+  border: 1px solid var(--line);
+  box-shadow: var(--lip), var(--keel), var(--cast-1), 0 5px 12px -4px oklch(0 0 0 / 0.45);
+  transition: transform .1s ease, box-shadow .15s ease, color .14s ease;
+  text-decoration: none;
+}
+.btn:hover { transform: translateY(-1px); color: var(--text); box-shadow: var(--lip), var(--keel), var(--cast-1), 0 9px 20px -5px oklch(0 0 0 / 0.55); }
+.btn:active { transform: translateY(1px); box-shadow: var(--sink); }
+.btn-yolk {
+  color: var(--yolk-ink); border-color: var(--yolk-edge);
+  background: linear-gradient(180deg, var(--yolk), var(--yolk-deep));
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.55), inset 0 -1px 0 oklch(0.5 0.11 68 / 0.55),
+              var(--cast-1), 0 7px 18px -6px oklch(0.8 0.16 88 / 0.6);
+}
+.btn-yolk:hover { color: var(--yolk-ink); box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.6), inset 0 -1px 0 oklch(0.5 0.11 68 / 0.55), var(--cast-1), 0 12px 26px -7px oklch(0.8 0.16 88 / 0.7); }
+
+/* ─────────────────────────────────────────────────────────────────── pieces */
+.card {
+  background: linear-gradient(180deg, var(--panel-hi), var(--panel-lo));
+  border: 1px solid var(--line); border-radius: var(--r-card);
+  box-shadow: var(--raise);
+}
+.well {
+  background: var(--well); border: 1px solid oklch(0 0 0 / 0.38);
+  border-radius: var(--r-panel); box-shadow: var(--sink);
+}
+.tag {
+  display: inline-flex; align-items: center; border-radius: 999px;
+  padding: 4px 11px; font-size: 13px; font-weight: 600; letter-spacing: -0.005em;
+  box-shadow: var(--lip-soft), 0 1px 2px oklch(0 0 0 / 0.3);
+}
+.tag-blue   { color: var(--blue);   background: linear-gradient(180deg, color-mix(in oklch, var(--blue) 24%, oklch(0.3 0 0)), color-mix(in oklch, var(--blue) 15%, oklch(0.27 0 0))); }
+.tag-green  { color: var(--green);  background: linear-gradient(180deg, color-mix(in oklch, var(--green) 24%, oklch(0.3 0 0)), color-mix(in oklch, var(--green) 15%, oklch(0.27 0 0))); }
+.tag-amber  { color: var(--amber);  background: linear-gradient(180deg, color-mix(in oklch, var(--amber) 24%, oklch(0.3 0 0)), color-mix(in oklch, var(--amber) 15%, oklch(0.27 0 0))); }
+.tag-purple { color: var(--purple); background: linear-gradient(180deg, color-mix(in oklch, var(--purple) 24%, oklch(0.3 0 0)), color-mix(in oklch, var(--purple) 15%, oklch(0.27 0 0))); }
+.tag-red    { color: var(--red);    background: linear-gradient(180deg, color-mix(in oklch, var(--red) 24%, oklch(0.3 0 0)), color-mix(in oklch, var(--red) 15%, oklch(0.27 0 0))); }
+.tag-yolk   { color: var(--yolk);   background: linear-gradient(180deg, color-mix(in oklch, var(--yolk) 22%, oklch(0.3 0 0)), color-mix(in oklch, var(--yolk) 13%, oklch(0.27 0 0))); }
+.tag-gray   { color: var(--text-2); background: linear-gradient(180deg, oklch(0.355 0 0), oklch(0.31 0 0)); }
+
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.eyebrow {
+  font-size: 12.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.13em; color: var(--text-4);
+}
+
+/* ───────────────────────────────────────────────────────────────── motion
+   One easing curve for everything that moves, so the app feels like one hand
+   made it. --ease-out for arrivals, --ease-spring for anything that lands. */
+:root {
+  --ease-out: cubic-bezier(.22, .9, .3, 1);
+  --ease-spring: cubic-bezier(.22, .9, .3, 1.22);
+}
+
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes slide-in { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+@keyframes pop { 0% { opacity: 0; transform: scale(.94); } 60% { transform: scale(1.015); } 100% { opacity: 1; transform: none; } }
+
+/* Staggered arrival. Set --i on each child to order them. */
+.stagger > * { animation: rise .4s var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
+.anim-rise { animation: rise .4s var(--ease-out) backwards; }
+.anim-pop  { animation: pop .34s var(--ease-spring) backwards; }
+.anim-slide { animation: slide-in .34s var(--ease-out) backwards; }
+
+/* Numbers that count up rather than snapping. */
+.num { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, .stagger > * { animation: none !important; transition: none !important; }
+}
