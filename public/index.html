@@ -277,6 +277,44 @@
     .bubble { max-width: 100%; }
   }
 
+  /* ================================================================= charts
+     Fill steps are NOT the --l0..--l3 ink colours. Those sit at L 0.72 because
+     they are used as text; the validator's dark band for large fills is
+     L 0.48-0.67, so these are the same four hues re-stepped to L 0.60 and
+     checked against the oklch(0.26 0 0) surface. Blue/green separate poorly
+     under tritanopia, so every level is ALSO labelled in text — identity never
+     rests on hue alone. */
+  :root {
+    --f0: oklch(0.60 0.13 145);
+    --f1: oklch(0.60 0.14 250);
+    --f2: oklch(0.60 0.13 75);
+    --f3: oklch(0.60 0.14 300);
+    --track: oklch(0.35 0 0);
+  }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 0.8rem; }
+
+  .hero { display: flex; align-items: baseline; gap: 0.9rem; flex-wrap: wrap; }
+  .hero .fig { font-size: 3rem; font-weight: 750; line-height: 1; letter-spacing: -0.03em; }
+  .hero .of { color: var(--t4); font-size: 1.05rem; }
+  .hero .cap { color: var(--t3); font-size: 0.85rem; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 0.8rem; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0.8rem 0.9rem; }
+  .tile .lab { font-size: 0.72rem; color: var(--t4); font-weight: 650; }
+  .tile .val { font-size: 1.55rem; font-weight: 700; line-height: 1.25; letter-spacing: -0.02em; }
+  .tile .sub { font-size: 0.72rem; color: var(--t4); }
+
+  .chartcard { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 1rem 1.1rem 0.9rem; }
+  .chartcard h3 { margin: 0; font-size: 0.92rem; font-weight: 650; letter-spacing: -0.01em; }
+  .chartcard .why { margin: 0.15rem 0 0.9rem; font-size: 0.78rem; color: var(--t4); }
+  .chartcard figcaption { margin-top: 0.7rem; font-size: 0.74rem; color: var(--t4); }
+  svg .ax { fill: var(--t4); font: 600 10.5px var(--font); }
+  svg .val { fill: var(--t2); font: 700 11px var(--font); }
+  svg .mid { text-anchor: middle; }
+  svg .dim { fill: var(--t4); font-weight: 500; opacity: 0.8; }
+  .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; vertical-align: 0; margin-right: 0.3rem; }
+
   /* ================================================================= shell
      Sidebar + one visible panel. Everything used to be stacked on a single
      scrolling page, so the thing you actually wanted was always three
@@ -421,6 +459,8 @@
     </div>
 
     <section class="panel" id="p-profile">
+      <div id="dash"></div>
+      <h2>Your profile in full</h2>
       <div class="plist" id="profiles"></div>
     </section>
 
@@ -681,6 +721,115 @@ function renderConnect() {
 }
 
 /** Your own profile — the one profile this dashboard shows in full. */
+/* ------------------------------------------------------------------ metrics
+   Everything below is derived from the store — field counts, the four ladder
+   views the MCP tools return, and live channels. Nothing is sampled, smoothed
+   or invented; if a number looks wrong it is because the data is. */
+
+const FILL = { L0: 'var(--f0)', L1: 'var(--f1)', L2: 'var(--f2)', L3: 'var(--f3)' };
+const POLICY_WORD = { free: 'shared freely', ask: 'asks you first', never: 'never leaves' };
+
+/** Bars: ≤24px thick, 4px rounded at the data end, square at the baseline. */
+function barRow(y, label, value, total, max, fill, w) {
+  const H = 14, PAD = 96, right = 52;
+  const span = w - PAD - right;
+  const len = max ? Math.max(value ? 3 : 0, (value / max) * span) : 0;
+  return `
+    <text x="0" y="${y + H - 3}" class="ax">${esc(label)}</text>
+    <rect x="${PAD}" y="${y}" width="${span}" height="${H}" rx="4" fill="var(--track)"/>
+    ${value ? `<rect x="${PAD}" y="${y}" width="${len}" height="${H}" rx="4" fill="${fill}">
+        <title>${esc(label)}: ${value} of ${total} known</title></rect>` : ''}
+    <text x="${PAD + span + 8}" y="${y + H - 3}" class="val">${value}/${total}</text>`;
+}
+
+function renderDash(me, schema, channels) {
+  const levels = schema.levels ?? ['L0', 'L1', 'L2', 'L3'];
+  const byLevel = (l) => Object.entries(schema.fieldLevels ?? {}).filter(([, v]) => v === l).map(([k]) => k);
+
+  // known / total per rung, and the cumulative view an agent actually receives
+  const rows = levels.map((l) => {
+    const all = byLevel(l);
+    const known = all.filter((f) => f in (me.fields ?? {})).length;
+    const view = me.views?.[l] ?? { fields: {}, redacted: [] };
+    return {
+      level: l, label: `${l} ${schema.levelLabels?.[l] ?? ''}`.trim(),
+      known, total: all.length,
+      cumulative: Object.keys(view.fields).length,   // views are already ≤ level
+      redacted: (view.redacted ?? []).length,
+      policy: me.budget?.levels?.[l] ?? 'ask',
+    };
+  });
+
+  const freeCap = rows.filter((r) => r.policy === 'free').reduce((n, r) => Math.max(n, r.cumulative), 0);
+  const gated = rows.find((r) => r.policy === 'ask');
+  const never = (me.budget?.neverShare ?? []).length;
+  const live = channels.filter((c) => !c.closed).length;
+  const maxKnown = Math.max(1, ...rows.map((r) => r.total));
+  const maxCum = Math.max(1, ...rows.map((r) => r.cumulative));
+
+  const W = 420, RH = 26;
+  const barsH = rows.length * RH + 6;
+
+  // Cumulative columns. One measure, one axis — the gate is shown as a text
+  // chip under each column rather than a second scale.
+  const CW = 24, GAP = 2, colTop = 18, colH = 92, base = colTop + colH;
+  const slot = (W - 20) / rows.length;
+  const cols = rows.map((r, i) => {
+    const x = 10 + i * slot + (slot - CW) / 2;
+    const h = Math.max(r.cumulative ? 3 : 0, (r.cumulative / maxCum) * colH);
+    return `
+      ${r.cumulative ? `<rect x="${x}" y="${base - h}" width="${CW}" height="${h}" rx="4" fill="${FILL[r.level]}">
+          <title>At ${r.level}: ${r.cumulative} field(s) visible · ${POLICY_WORD[r.policy]}</title></rect>` : ''}
+      <text x="${x + CW / 2}" y="${base - h - 6}" class="val mid">${r.cumulative}</text>
+      <text x="${x + CW / 2}" y="${base + 15}" class="ax mid">${r.level}</text>
+      <text x="${x + CW / 2}" y="${base + 28}" class="ax mid dim">${r.policy}</text>`;
+  }).join('');
+
+  $('dash').innerHTML = `
+    <div class="card hero" style="margin-bottom:.8rem">
+      <div><span class="fig">${me.known}</span> <span class="of">of ${me.total}</span></div>
+      <div class="cap">things your wingman has learned about you.
+        ${me.known < me.total ? `${me.total - me.known} still blank — keep talking to it.` : 'Complete.'}</div>
+    </div>
+
+    <div class="tiles" style="margin-bottom:.8rem">
+      <div class="tile"><div class="lab">Visible without asking</div>
+        <div class="val">${freeCap}</div><div class="sub">at your free tiers</div></div>
+      <div class="tile"><div class="lab">Behind a gate</div>
+        <div class="val">${Math.max(0, (rows.at(-1)?.cumulative ?? 0) - freeCap)}</div>
+        <div class="sub">${gated ? `${gated.level} and up asks you` : 'nothing gated'}</div></div>
+      <div class="tile"><div class="lab">Never share</div>
+        <div class="val">${never}</div><div class="sub">${never ? 'rules set' : 'no rules yet'}</div></div>
+      <div class="tile"><div class="lab">Live negotiations</div>
+        <div class="val">${live}</div><div class="sub">${channels.length} total</div></div>
+    </div>
+
+    <div class="grid2">
+      <figure class="chartcard" style="margin:0">
+        <h3>What it knows, by rung</h3>
+        <p class="why">How much of each tier you have actually filled in.</p>
+        <svg viewBox="0 0 ${W} ${barsH}" width="100%" height="${barsH}" role="img"
+             aria-label="Fields known per disclosure level">
+          ${rows.map((r, i) => barRow(i * RH, r.label, r.known, r.total, maxKnown, FILL[r.level], W)).join('')}
+        </svg>
+        <figcaption>Blank rungs are things it has never asked you about.</figcaption>
+      </figure>
+
+      <figure class="chartcard" style="margin:0">
+        <h3>What a stranger's agent sees as it climbs</h3>
+        <p class="why">Cumulative — each rung includes everything below it.</p>
+        <svg viewBox="0 0 ${W} ${base + 36}" width="100%" height="${base + 36}" role="img"
+             aria-label="Cumulative fields visible at each disclosure level">
+          <line x1="0" y1="${base}" x2="${W}" y2="${base}" stroke="var(--line)" stroke-width="1"/>
+          ${cols}
+        </svg>
+        <figcaption>${gated
+          ? `Everything past <b>${gated.level}</b> stops and asks you first.`
+          : 'No level is gated — your agent never interrupts you.'}</figcaption>
+      </figure>
+    </div>`;
+}
+
 function renderProfiles(profiles) {
   if (!profiles.length) {
     $('profiles').innerHTML = `
@@ -831,6 +980,7 @@ async function load() {
       renderConnect();
     }
 
+    renderDash(me, schema, ch.channels ?? []);
     renderProfiles(lastProfiles);
     renderChannels(ch.channels ?? []);
     renderCandidates(cand.candidates ?? []);
