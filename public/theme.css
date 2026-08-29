@@ -120,4 +120,27 @@ svg { display: block; }
   letter-spacing: 0.13em; color: var(--text-4);
 }
 
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+/* ───────────────────────────────────────────────────────────────── motion
+   One easing curve for everything that moves, so the app feels like one hand
+   made it. --ease-out for arrivals, --ease-spring for anything that lands. */
+:root {
+  --ease-out: cubic-bezier(.22, .9, .3, 1);
+  --ease-spring: cubic-bezier(.22, .9, .3, 1.22);
+}
+
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes slide-in { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+@keyframes pop { 0% { opacity: 0; transform: scale(.94); } 60% { transform: scale(1.015); } 100% { opacity: 1; transform: none; } }
+
+/* Staggered arrival. Set --i on each child to order them. */
+.stagger > * { animation: rise .4s var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
+.anim-rise { animation: rise .4s var(--ease-out) backwards; }
+.anim-pop  { animation: pop .34s var(--ease-spring) backwards; }
+.anim-slide { animation: slide-in .34s var(--ease-out) backwards; }
+
+/* Numbers that count up rather than snapping. */
+.num { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, .stagger > * { animation: none !important; transition: none !important; }
+}
