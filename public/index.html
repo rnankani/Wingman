@@ -96,6 +96,32 @@
   h2:first-of-type { margin-top: 1.6rem; }
   h2 .note { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--t4); }
 
+  .candtoggle {
+    display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+    width: 100%; background: none; border: 0; padding: 0; cursor: pointer;
+    color: inherit; font: inherit; text-align: left;
+  }
+  .candtoggle:hover .who { color: var(--amber); }
+  .candtoggle .caret { margin-left: 0.4rem; color: var(--t4); font-size: 0.8rem; }
+
+  .steps { padding-left: 1.1rem; margin: 1rem 0 0; color: var(--t2); }
+  .steps li { margin: 0 0 1.2rem; }
+  .steps pre {
+    background: var(--inset); border: 1px solid var(--line); border-radius: 10px;
+    padding: 0.8rem 0.9rem; margin: 0.6rem 0 0.5rem; max-height: 15rem; overflow: auto;
+    font: 0.76rem/1.5 var(--mono); color: var(--t3); white-space: pre-wrap;
+  }
+  #importText {
+    width: 100%; margin: 0.6rem 0 0.5rem; background: var(--inset); color: var(--t1);
+    border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem 0.7rem;
+    font: 0.8rem/1.5 var(--mono); resize: vertical;
+  }
+  #importText:focus { outline: none; border-color: color-mix(in oklch, var(--amber) 45%, transparent); }
+  #importStatus { margin-left: 0.6rem; font-size: 0.8rem; color: var(--t3); }
+
+  .setlinks { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+  .setlinks .ghost { text-decoration: none; }
+
   .card {
     background: var(--panel); border: 1px solid var(--line);
     border-radius: 16px; padding: 1rem 1.1rem;
@@ -373,6 +399,12 @@
     clip-path: inset(0);
   }
   .navtab .ico { width: 1.1rem; text-align: center; flex: none; font-size: 0.95rem; opacity: 0.9; }
+  /* Optical sizing, not a nudge for its own sake: these glyphs come from
+     different Unicode blocks and are drawn to different cap heights, so one
+     font-size makes them look inconsistent. The gear (U+2699) renders small and
+     the drafting arrow (U+2387) light, so both are corrected to match ◉ and ✦. */
+  .navtab[data-panel="settings"] .ico { font-size: 1.2rem; opacity: 0.95; }
+  .navtab[data-panel="connect"]  .ico { font-size: 1.05rem; }
   .navtab .count {
     margin-left: auto; font: 700 0.7rem var(--mono); padding: 0.05rem 0.4rem;
     border-radius: 999px; background: var(--bg); color: var(--t3);
@@ -430,21 +462,14 @@
 
     <nav id="tabs">
       <button class="navtab" data-panel="profile"><span class="ico">&#9673;</span> Profile</button>
-      <button class="navtab" data-panel="channels"><span class="ico">&#8644;</span> Negotiations <span class="count" id="cChannels" hidden></span></button>
-      <button class="navtab" data-panel="candidates"><span class="ico">&#10022;</span> Candidates <span class="count" id="cCandidates" hidden></span></button>
+      <button class="navtab" data-panel="candidates"><span class="ico">&#10022;</span> Conversations <span class="count" id="cCandidates" hidden></span></button>
       <button class="navtab" data-panel="connect"><span class="ico">&#9095;</span> Connect</button>
-      <button class="navtab" data-panel="system" id="tabSystem" hidden><span class="ico">&#9881;</span> System</button>
+      <button class="navtab" data-panel="population" id="tabPopulation" hidden><span class="ico">&#9678;</span> Population <span class="count" id="cPopulation" hidden></span></button>
+      <button class="navtab" data-panel="settings"><span class="ico">&#9881;</span> Settings</button>
     </nav>
-
-    <div class="side-label">Settings</div>
-    <a class="navtab" href="/settings"><span class="ico">&#9703;</span> Consent budget</a>
-    <a class="navtab" href="/brand/"><span class="ico">&#9680;</span> Brand</a>
 
     <div class="side-foot">
       <div class="side-me" id="me"></div>
-      <form method="POST" action="/logout">
-        <button class="navtab" type="submit"><span class="ico">&#8594;</span> Sign out</button>
-      </form>
     </div>
   </aside>
 
@@ -464,9 +489,6 @@
       <div class="plist" id="profiles"></div>
     </section>
 
-    <section class="panel" id="p-channels" hidden>
-      <div class="clist" id="channels"></div>
-    </section>
 
     <section class="panel" id="p-candidates" hidden>
       <div class="clist" id="candidates"></div>
@@ -476,13 +498,55 @@
       <div class="card" id="connect"></div>
     </section>
 
-    <!-- Owner-only: this machine&rsquo;s TrueForge wiring, which is nobody else&rsquo;s
-         business. The tab itself stays hidden for everyone else. -->
-    <section class="panel" id="p-system" hidden>
-      <h2>Pipeline</h2>
-      <div class="card"><div class="checks" id="checks"></div></div>
-      <h2>Tool surface <span class="note" id="policyNote"></span></h2>
-      <div class="card" id="toolsCard"></div>
+    <section class="panel" id="p-population" hidden>
+      <div class="clist" id="population"></div>
+    </section>
+
+    <section class="panel" id="p-settings" hidden>
+      <h2>Account</h2>
+      <div class="card">
+        <dl class="kv">
+          <dt>name</dt><dd id="setName">—</dd>
+          <dt>username</dt><dd id="setUser">—</dd>
+        </dl>
+        <div class="setlinks">
+          <a class="ghost" href="/settings">Consent budget</a>
+          <a class="ghost" href="/brand/">Brand</a>
+          <form method="POST" action="/logout" style="display:inline">
+            <button class="ghost" type="submit">Sign out</button>
+          </form>
+        </div>
+      </div>
+
+      <h2>Bring what another AI knows about you</h2>
+      <div class="card">
+        <p class="why">Your agent starts empty, and typing fifteen fields is the
+          form this product exists to avoid. If you already talk to ChatGPT or
+          Claude, borrow what they have.</p>
+
+        <ol class="steps">
+          <li>Copy this and paste it into ChatGPT or Claude.
+            <pre id="importPrompt">loading…</pre>
+            <button class="ghost" id="copyPrompt">Copy prompt</button>
+          </li>
+          <li>Paste their reply back here.
+            <textarea id="importText" rows="6" placeholder='{ "vibe": "…", "interests": "…" }'></textarea>
+            <button class="ghost" id="doImport">Import into my profile</button>
+            <span class="status" id="importStatus"></span>
+          </li>
+        </ol>
+        <p class="why">Nothing is shared by importing — it only fills in your own
+          profile. Your consent budget still decides what ever leaves it.</p>
+      </div>
+
+      <!-- Owner-only: this machine's TrueForge wiring, which is nobody else's
+           business. Hidden entirely for everyone else rather than shown empty. -->
+      <div id="ownerOnly" hidden>
+        <h2>Pipeline</h2>
+        <div class="card"><div class="checks" id="checks"></div></div>
+        <h2>Tool surface <span class="note" id="policyNote"></span></h2>
+        <div class="card" id="toolsCard"></div>
+      </div>
     </section>
   </main>
 
@@ -509,10 +573,10 @@ const time = (iso) => new Date(iso).toLocaleTimeString();
    that snaps back to the first tab on every refresh is worse than no tabs. */
 const PANELS = {
   profile:    { title: 'Profile',      blurb: 'what your wingman knows about you' },
-  channels:   { title: 'Negotiations', blurb: 'your agent talking to other agents' },
-  candidates: { title: 'Candidates',   blurb: 'everyone else, at L0 only' },
+  candidates: { title: 'Conversations', blurb: 'people your agent has actually talked to' },
   connect:    { title: 'Connect',      blurb: 'point a machine at this server' },
-  system:     { title: 'System',       blurb: 'this host\'s TrueForge wiring' },
+  population: { title: 'Population', blurb: 'the seeded demo people, negotiating with each other' },
+  settings:   { title: 'Settings',     blurb: 'your account, your consent budget, this machine' },
 };
 const PANEL_STORE = 'wingman.panel';
 
@@ -550,6 +614,10 @@ const TAG = { '@read-only': 'ro', '@write': 'w', '@destructive': 'd', '@unannota
 
 /** userId -> display name, so negotiations read as people rather than as ids. */
 let names = new Map();
+/** Channels, kept so Candidates can show the conversation with each person. */
+let lastChannels = [];
+/** userId -> expanded. A poll every few seconds must not slam a card shut mid-read. */
+const openCandidate = new Set();
 const nameOf = (id) => names.get(id) ?? id;
 
 function renderChecks(checks) {
@@ -593,75 +661,18 @@ function renderTools(tools, policy) {
  * happened, and under what authority, without becoming a way to read the
  * other side's profile.
  */
-function renderChannels(channels) {
-  if (!channels.length) {
-    $('channels').innerHTML = `
-      <div class="card hollow">
-        <div class="chikny chikny--resting"></div>
-        <div>No negotiations yet. When two wingmen open a channel it shows up here.</div>
-      </div>`;
-    return;
-  }
-
-  $('channels').innerHTML = channels.map(c => {
-    const [a, b] = c.parties;
-    const verdicts = Object.entries(c.verdicts ?? {});
-    const allMatch = verdicts.length === 2 && verdicts.every(([, v]) => v.verdict === 'match');
-    const anyPass = verdicts.some(([, v]) => v.verdict === 'pass');
-
-    // Pose doubles as the status light: the mascot is the state.
-    const pose = allMatch ? 'matched' : anyPass ? 'passed' : c.closed ? 'thinking' : 'negotiating';
-
-    const turns = (c.turns ?? []).map(t => `
-      <div class="turn ${t.from === b ? 'right' : ''}">
-        <div class="bubble">
-          <span class="from">${esc(nameOf(t.from))} · ${esc(t.level)}</span>
-          <span class="msg">${esc(t.message)}</span>
-        </div>
-      </div>`).join('');
-
-    const discl = (c.disclosures ?? []).map(d => `
-      <span class="dchip tint ${esc(d.via)}" style="--accent: var(--${String(d.level).toLowerCase()})">
-        ${esc(nameOf(d.from))}: ${esc(d.field)}
-      </span>`).join('');
-
-    const vrows = verdicts.map(([who, v]) => `
-      <div class="vrow">
-        ${esc(nameOf(who))} returned <b class="${esc(v.verdict)}">${esc(v.verdict)}</b>${v.reason ? ` — ${esc(v.reason)}` : ''}
-      </div>`).join('');
-
-    const outcome = c.date
-      ? `<div class="outcome tint" style="--accent: var(--green)">
-           Date · ${esc(c.date.venue)} at ${esc(new Date(c.date.isoTime).toLocaleString())}
-           — proposed by ${esc(nameOf(c.date.proposedBy))}, accepted by ${esc((c.date.acceptedBy ?? []).map(nameOf).join(', ') || 'nobody yet')}
-         </div>`
-      : c.intro
-        ? `<div class="outcome tint" style="--accent: var(--blue)">
-             Intro from ${esc(nameOf(c.intro.from))} — ${esc(c.intro.text)}
-           </div>`
-        : '';
-
-    return `
-      <div class="card">
-        <div class="c-head">
-          <div class="chikny chikny--${pose}"></div>
-          <span class="vs">${esc(nameOf(a))}<em>vs</em>${esc(nameOf(b))}</span>
-          <span class="lv tint" data-policy="free" style="--accent: var(--${String(c.level?.[a] ?? 'L0').toLowerCase()})">${esc(c.level?.[a] ?? 'L0')}</span>
-          <span class="lv tint" data-policy="free" style="--accent: var(--${String(c.level?.[b] ?? 'L0').toLowerCase()})">${esc(c.level?.[b] ?? 'L0')}</span>
-          <span class="c-meta">
-            ${c.exchanges}/${c.maxExchanges} exchanges ·
-            ${c.closed ? 'closed' : `waiting on ${esc(nameOf(c.waitingOn))}`} ·
-            opened ${esc(time(c.createdAt))}
-          </span>
-        </div>
-
-        ${turns ? `<div class="turns">${turns}</div>` : `<div class="turns"><div class="empty">No turns posted yet.</div></div>`}
-        ${discl ? `<div class="discl"><span class="lab">disclosed:</span>${discl}</div>` : ''}
-        ${vrows ? `<div class="verdicts">${vrows}</div>` : ''}
-        ${outcome}
-      </div>`;
-  }).join('');
+/** One channel's turns, as bubbles. Shared by Negotiations and Candidates so
+ *  the two views can never drift into showing different things. */
+function turnBubbles(c, them) {
+  return (c.turns ?? []).map(t => `
+    <div class="turn ${t.from === them ? 'right' : ''}">
+      <div class="bubble">
+        <span class="from">${esc(nameOf(t.from))} · ${esc(t.level)}</span>
+        <span class="msg">${esc(t.message)}</span>
+      </div>
+    </div>`).join('');
 }
+
 
 /**
  * The token your own machine authenticates with. Masked until asked for: this
@@ -909,12 +920,63 @@ function renderProfiles(profiles) {
  * hands an agent, so the dashboard cannot show you more about a stranger than
  * your wingman could learn on its own.
  */
+function renderPopulation(channels, names) {
+  const who = (id) => names[id] ?? id;
+  if (!channels.length) {
+    $('population').innerHTML = `
+      <div class="card hollow">
+        <div class="chikny chikny--resting"></div>
+        <div>The demo population is idle. Open a channel between two of them and it appears here.</div>
+      </div>`;
+    return;
+  }
+  $('population').innerHTML = channels.map(c => {
+    const [a, b] = c.parties;
+    const vs = Object.entries(c.verdicts ?? {});
+    const allMatch = vs.length === 2 && vs.every(([, v]) => v.verdict === 'match');
+    const anyPass = vs.some(([, v]) => v.verdict === 'pass');
+    const pose = allMatch ? 'matched' : anyPass ? 'passed' : c.closed ? 'thinking' : 'negotiating';
+
+    const turns = (c.turns ?? []).map(t => `
+      <div class="turn ${t.from === b ? 'right' : ''}">
+        <div class="bubble">
+          <span class="from">${esc(who(t.from))} · ${esc(t.level)}</span>
+          <span class="msg">${esc(t.message)}</span>
+        </div>
+      </div>`).join('');
+
+    const outcome = c.date
+      ? `<div class="outcome tint" style="--accent: var(--green)">
+           Date booked · ${esc(c.date.venue)} at ${esc(new Date(c.date.isoTime).toLocaleString())}
+         </div>`
+      : c.intro
+        ? `<div class="outcome tint" style="--accent: var(--blue)">Intro sent — ${esc(c.intro.text)}</div>`
+        : '';
+
+    return `
+      <div class="card">
+        <div class="c-head">
+          <div class="chikny chikny--${pose}"></div>
+          <span class="vs">${esc(who(a))}<em>vs</em>${esc(who(b))}</span>
+          <span class="c-meta">${c.turns.length} turns ·
+            ${c.closed ? 'closed' : `waiting on ${esc(who(c.waitingOn))}`}</span>
+        </div>
+        <div class="turns">${turns || '<div class="empty">No turns yet.</div>'}</div>
+        ${vs.map(([id, v]) => `<div class="vrow">${esc(who(id))} returned
+           <b class="${esc(v.verdict)}">${esc(v.verdict)}</b>${v.reason ? ` — ${esc(v.reason)}` : ''}</div>`).join('')}
+        ${outcome}
+      </div>`;
+  }).join('');
+}
+
+let lastCandidates = [];
 function renderCandidates(candidates) {
+  lastCandidates = candidates;
   if (!candidates.length) {
     $('candidates').innerHTML = `
       <div class="card hollow">
         <div class="chikny chikny--idle"></div>
-        <div>Nobody else has joined yet. Share the join link.</div>
+        <div>No conversations yet. Ask your agent to find you a match and it will show up here.</div>
       </div>`;
     return;
   }
@@ -927,20 +989,52 @@ function renderCandidates(candidates) {
           <dd>${esc(v)}</dd>`).join('')}</dl>`
       : `<div class="empty">Nothing public yet.</div>`;
 
+    const chan = lastChannels.find(x => (x.parties ?? []).includes(c.userId));
+    const open = openCandidate.has(c.userId);
+    const turnCount = chan?.turns?.length ?? 0;
+
+    const status = !chan
+      ? '<span class="meter">no conversation yet</span>'
+      : `<span class="meter">${chan.exchanges}/${chan.maxExchanges} exchanges · ${
+          chan.closed ? 'closed' : `waiting on ${esc(nameOf(chan.waitingOn))}`}</span>`;
+
+    const convo = !open ? '' : !chan
+      ? `<div class="turns"><div class="empty">Your agent has not opened a channel with
+           ${esc(c.displayName ?? c.userId)} yet. Ask it to.</div></div>`
+      : `<div class="turns">${turnBubbles(chan, c.userId) ||
+           '<div class="empty">Channel open, no turns posted yet.</div>'}</div>
+         ${(chan.disclosures ?? []).length ? `<div class="discl"><span class="lab">disclosed:</span>${
+           chan.disclosures.map(d => `
+             <span class="dchip tint ${esc(d.via)}" style="--accent: var(--${String(d.level).toLowerCase()})">
+               ${esc(nameOf(d.from))}: ${esc(d.field)}
+             </span>`).join('')}</div>` : ''}
+         ${Object.entries(chan.verdicts ?? {}).map(([who, v]) => `
+             <div class="vrow">${esc(nameOf(who))} returned
+               <b class="${esc(v.verdict)}">${esc(v.verdict)}</b>${v.reason ? ` — ${esc(v.reason)}` : ''}</div>`).join('')}`;
+
     return `
       <div class="card">
-        <div class="p-head">
-          <div class="chikny chikny--${c.isPersona ? 'idle' : 'resting'}"></div>
+        <button class="p-head candtoggle" data-user="${esc(c.userId)}" aria-expanded="${open}">
+          <div class="chikny chikny--${chan && !chan.closed ? 'negotiating' : 'idle'}"></div>
           <span class="who">${esc(c.displayName ?? c.userId)}</span>
-          <span class="pill">${c.isPersona ? 'persona' : 'person'}</span>
-          <span class="meter">L0 public only</span>
-        </div>
+          ${turnCount ? `<span class="pill">${turnCount} message${turnCount === 1 ? '' : 's'}</span>` : ''}
+          ${status}
+          <span class="caret">${open ? '&#9662;' : '&#9656;'}</span>
+        </button>
         ${rows}
         ${c.redacted?.length
           ? `<div class="withheld">they never share: ${c.redacted.map(f => `<code class="redacted">${esc(f)}</code>`).join(' ')}</div>`
           : ''}
+        ${convo}
       </div>`;
   }).join('');
+
+  document.querySelectorAll('.candtoggle').forEach(b =>
+    b.addEventListener('click', () => {
+      const u = b.dataset.user;
+      openCandidate.has(u) ? openCandidate.delete(u) : openCandidate.add(u);
+      renderCandidates(lastCandidates);
+    }));
 }
 
 let lastProfiles = [];
@@ -961,12 +1055,18 @@ async function load() {
                      ...(cand.candidates ?? []).map(c => [c.userId, c.displayName ?? c.userId])]);
 
     $('me').textContent = `${me.displayName}${me.username ? ` · @${me.username}` : ''}`;
+    $('setName').textContent = me.displayName ?? '—';
+    $('setUser').textContent = me.username ? `@${me.username}` : 'no login';
 
     // The pipeline panel is the host's own wiring, so it is fetched only when
     // this session actually owns the server — a 403 here is expected for
     // everyone else and must not blank the rest of the page.
     if (me.isOwner) {
-      $('tabSystem').hidden = false;
+      $('ownerOnly').hidden = false;
+      $('tabPopulation').hidden = false;
+      const pop = await api('/api/population').then(r => r.json());
+      renderPopulation(pop.channels ?? [], pop.names ?? {});
+      setCount('cPopulation', (pop.channels ?? []).length);
       const st = await api('/api/status').then(r => r.json());
       renderChecks(st.checks);
       renderTools(st.tools, st.approvalPolicy);
@@ -982,9 +1082,8 @@ async function load() {
 
     renderDash(me, schema, ch.channels ?? []);
     renderProfiles(lastProfiles);
-    renderChannels(ch.channels ?? []);
+    lastChannels = ch.channels ?? [];
     renderCandidates(cand.candidates ?? []);
-    setCount('cChannels', (ch.channels ?? []).length);
     setCount('cCandidates', (cand.candidates ?? []).length);
     // Restored after the owner tab is known, so a saved "system" choice is not
     // silently downgraded to Profile on every load.
@@ -997,6 +1096,37 @@ async function load() {
 }
 
 $('refresh').addEventListener('click', load);
+// ---- import from another assistant -------------------------------------
+api('/me/import-prompt')
+  .then(r => r.json())
+  .then(d => { if (d.prompt) $('importPrompt').textContent = d.prompt; })
+  .catch(() => {});
+
+$('copyPrompt')?.addEventListener('click', async () => {
+  await navigator.clipboard.writeText($('importPrompt').textContent);
+  $('copyPrompt').textContent = 'Copied';
+  setTimeout(() => ($('copyPrompt').textContent = 'Copy prompt'), 1500);
+});
+
+$('doImport')?.addEventListener('click', async () => {
+  const text = $('importText').value.trim();
+  if (!text) { $('importStatus').textContent = 'Paste their reply first.'; return; }
+  $('doImport').disabled = true;
+  $('importStatus').textContent = 'importing…';
+  const r = await api('/me/import', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  const d = await r.json();
+  $('doImport').disabled = false;
+  if (!r.ok) { $('importStatus').textContent = d.error ?? 'import failed'; return; }
+  $('importStatus').textContent =
+    `imported ${d.imported.length} field${d.imported.length === 1 ? '' : 's'}` +
+    (d.newFields.length ? ` (${d.newFields.length} new)` : '') + ` — now ${d.known}/${d.total}`;
+  $('importText').value = '';
+  load();
+});
+
 await load();
 setInterval(load, 5000);
 </script>

@@ -215,7 +215,11 @@ if (q.get('t') || q.get('k')) history.replaceState({}, '', location.pathname);
 const TOKEN = localStorage.getItem(T_STORE) ?? '';
 const ADMIN = localStorage.getItem(K_STORE) ?? '';
 const EDIT_USER = localStorage.getItem(U_STORE) ?? '';
-$('back').href = ADMIN ? '/' : '/join';
+// Dashboard is always `/`. Sending unsigned-in people to /join was treating a
+// signed-in session (no admin key in localStorage) as a brand-new account.
+// Break-glass visits stripped ?k= from the URL, so reattach it here; everyone
+// else rides the session cookie. No session → login page, not account creation.
+$('back').href = ADMIN ? `/?k=${encodeURIComponent(ADMIN)}` : '/';
 
 const headers = () => {
   const h = { 'content-type': 'application/json' };

@@ -22,6 +22,7 @@ import {
   FIELD_NAMES,
   LEVELS,
   LEVEL_LABELS,
+  mutuallyCompatible,
   type Channel,
   type FieldName,
   type Level,
@@ -145,8 +146,25 @@ exchange, read the reply, disclose if useful, exchange again — until you reach
 verdict or hit the cap. Use waitSeconds:180 and retry on timeout. Only summarise
 to your human at the very end.
 
-Escalate one level at a time, never jump. Cap 8 exchanges, then submit_verdict
-with match, pass, or needs_human. send_intro only after BOTH sides return match.
+Escalate one level at a time, never jump. There is no turn limit — decide when
+you have enough, not when you run out.
+
+STOP CIRCLING. Read the last four turns before writing. If you have both already
+agreed on a place, a day or a time, do not re-confirm it or ask which they
+prefer — agreeing repeatedly is not progress. Once a venue and a time exist and
+nobody objected, submit_verdict('match') immediately. Never send a message
+substantially the same as one you already sent; if you have no genuinely new
+question, that is the signal to decide.
+
+GET TO A REAL PLAN. Small talk that never lands anywhere is a failure. Once you
+have a genuine read on each other, move it forward: what they like doing, when
+they are free, roughly where they are. Then submit_verdict — match, pass, or
+needs_human. Passing is a good outcome when a dealbreaker is real; do not match
+out of politeness.
+
+After BOTH sides return match: send_intro, then book_date with a specific venue
+and an ISO time that actually suits both people's stated availability. A match
+with no plan attached has not finished.
 Never type a private value into a message directly — call the disclose tool and
 use the value it returns. The tools record consent; your prose does not.`;
 }
@@ -242,22 +260,35 @@ export function buildMcpServer(me: string): McpServer {
     {
       title: 'List candidates',
       description:
-        'Everyone else registered, as their L0 public view only. Use this to decide who is worth opening a channel with. You get vibe, interests, area and a good Saturday — never names or contacts.',
+        'Everyone else who is a plausible match, as their L0 public view only. Already filtered to people whose stated gender matches what your human is seeking AND who are seeking your human\'s gender — so anyone listed here is someone both sides are open to. You get vibe, interests, area and a good Saturday — never names or contacts.',
       inputSchema: { limit: z.number().int().min(1).max(50).optional() },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async ({ limit }) => {
-      const others = listProfiles()
-        .filter((p) => p.userId !== me)
-        .filter((p) => Object.keys(p.fields).length > 0)
-        .slice(0, limit ?? 20)
-        .map((p) => {
-          const v = getShareableProfile(p.userId, 'L0')!;
-          return { userId: p.userId, at: v.fields };
-        });
+      const mine = myProfile().fields;
+      const all = listProfiles().filter((p) => p.userId !== me && Object.keys(p.fields).length > 0);
+      // Filtered here, not left to the model. A prompt asking it to respect
+      // orientation is a request; removing the rows is the answer.
+      const eligible = all.filter((p) => mutuallyCompatible(mine, p.fields));
+
+      const others = eligible.slice(0, limit ?? 20).map((p) => {
+        const v = getShareableProfile(p.userId, 'L0')!;
+        return { userId: p.userId, at: v.fields };
+      });
+
+      const missing = !mine.gender || !mine.seeking;
       return json({
         candidates: others,
-        note: 'L0 only. Phrase your own reason for each in plain language — do not invent compatibility scores.',
+        shown: others.length,
+        eligible: eligible.length,
+        filteredOut: all.length - eligible.length,
+        note:
+          'L0 only. Phrase your own reason for each in plain language — do not invent compatibility scores.' +
+          (missing
+            ? ' NOTE: your human has not told you their ' +
+              [!mine.gender && 'gender', !mine.seeking && 'who they are seeking'].filter(Boolean).join(' or ') +
+              ', so this list is unfiltered on that axis. Ask them, save it with update_profile, and call this again.'
+            : ''),
       });
     },
   );
@@ -347,7 +378,17 @@ export function buildMcpServer(me: string): McpServer {
     },
     async ({ withUserId }) => {
       if (withUserId === me) return refuse('You cannot negotiate with yourself.');
-      if (!getProfile(withUserId)) return refuse(`No such user "${withUserId}".`, 'Use list_candidates.');
+      const them = getProfile(withUserId);
+      if (!them) return refuse(`No such user "${withUserId}".`, 'Use list_candidates.');
+      // list_candidates already filters, but open_channel takes a raw userId, so
+      // the rule has to hold here too — otherwise the filter is a suggestion and
+      // one guessed id walks straight past it.
+      if (!mutuallyCompatible(myProfile().fields, them.fields)) {
+        return refuse(
+          `You and ${withUserId} are not looking for each other.`,
+          'Check list_candidates — it only lists people both sides are open to.',
+        );
+      }
       const c = openChannel(me, withUserId);
       return json({ channelId: c.id, them: withUserId, waitingOn: c.waitingOn === me ? 'you' : 'them' });
     },
@@ -369,10 +410,15 @@ export function buildMcpServer(me: string): McpServer {
         channelId: z.string(),
         message: z.string().describe('Your turn. Empty string = just keep waiting, post nothing.'),
         level: levelSchema.describe('The disclosure level this message is written at.'),
-        // Floor of 45: the other side is a human opening a laptop, not a
-        // server. A model that picks 10 gives up before anyone could answer
-        // and then reports the negotiation as stalled.
-        waitSeconds: z.number().int().min(45).max(180).optional(),
+        // 0 = post and return immediately, for agents driven by a poller that
+        // will bring them back. Anything else waits, and the floor of 45 exists
+        // because the other side may be a human opening a laptop: a model that
+        // picks 10 gives up before anyone could answer, then reports the
+        // negotiation as stalled.
+        waitSeconds: z
+          .union([z.literal(0), z.number().int().min(45).max(180)])
+          .optional()
+          .describe('0 posts and returns at once. Otherwise 45-180 to wait for their reply.'),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
@@ -398,6 +444,15 @@ export function buildMcpServer(me: string): McpServer {
         postTurn(c, me, message.trim(), level);
       }
 
+      if (waitSeconds === 0) {
+        const fresh = getChannel(channelId)!;
+        return json({
+          posted: true,
+          theirReply: null,
+          note: 'Posted without waiting. You will be brought back when they answer.',
+          exchanges: fresh.exchanges,
+        });
+      }
       const deadline = Date.now() + (waitSeconds ?? 120) * 1000;
       while (Date.now() < deadline) {
         const fresh = getChannel(channelId)!;

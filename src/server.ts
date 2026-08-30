@@ -14,6 +14,7 @@ import {
   resolveToken,
   rotateToken,
   setBudget,
+  updateProfile,
   usernameTaken,
 } from './store.js';
 import { PALETTE, POSES, spriteCss } from './brand.js';
@@ -189,8 +190,13 @@ app.get('/api/me', (_req, res) => {
  */
 app.get('/api/candidates', (_req, res) => {
   const me = res.locals.userId as string;
+  // Only people your agent has actually opened a channel with. The full
+  // registry is discovery — that belongs to the agent's list_candidates tool,
+  // not to a dashboard panel. Listing every stranger here made the page read
+  // like a directory of people you have no relationship with.
+  const talkedTo = new Set(listChannelsFor(me).flatMap((c) => c.parties).filter((u) => u !== me));
   const candidates = listProfiles()
-    .filter((p) => p.userId !== me)
+    .filter((p) => p.userId !== me && talkedTo.has(p.userId))
     .map((p) => {
       const view = getShareableProfile(p.userId, 'L0')!;
       return {
@@ -296,6 +302,155 @@ app.post('/api/token/rotate', (req, res) => {
  * route used to be /api/budget/:userId, which let anyone with a login rewrite a
  * stranger's disclosure policy and then read what it unlocked.
  */
+/**
+ * The seeded demo population's own negotiations — personas talking to personas.
+ *
+ * Owner-only, and deliberately NOT folded into /api/channels: that route stays
+ * strictly "channels you are a party to", because the moment a dashboard can
+ * show you someone else's negotiation the disclosure ladder stops meaning
+ * anything. This is a separate window onto fixtures the host seeded on their own
+ * machine, and it only includes channels where BOTH sides are personas — a real
+ * person's conversation never appears here.
+ */
+app.get('/api/population', requireOwnerApi, (_req, res) => {
+  const isPersona = (u: string) => getProfile(u)?.isPersona === true;
+  const seen = new Set<string>();
+  const channels = listProfiles()
+    .filter((p) => p.isPersona)
+    .flatMap((p) => listChannelsFor(p.userId))
+    .filter((c) => c.parties.every(isPersona))
+    .filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)))
+    .map((c) => ({
+      id: c.id,
+      parties: c.parties,
+      level: c.level,
+      exchanges: c.exchanges,
+      maxExchanges: c.maxExchanges,
+      waitingOn: c.waitingOn,
+      turns: c.turns,
+      disclosures: c.disclosures.map((d) => ({ from: d.from, field: d.field, level: d.level, via: d.via })),
+      verdicts: c.verdicts,
+      intro: c.intro ?? null,
+      date: c.date ?? null,
+      closed: c.closed,
+      createdAt: c.createdAt,
+    }))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  res.json({ channels, names: Object.fromEntries(listProfiles().map((p) => [p.userId, p.displayName])) });
+});
+
+/**
+ * The prompt you paste into another assistant, and the importer for what it
+ * gives back.
+ *
+ * Cold-start is the worst part of this product: an agent with an empty profile
+ * has nothing to negotiate with, and typing fifteen fields is exactly the form
+ * Wingman exists to avoid. But people have often already told ChatGPT or Claude
+ * years of this. This borrows it.
+ *
+ * The prompt asks for JSON keyed to our own field names, because a freeform
+ * paragraph would need an LLM to parse and this server has no model. Prose is
+ * still accepted as a fallback — people paste what they paste.
+ */
+function importPrompt(): string {
+  const lines = FIELD_NAMES.map((f) => `  "${f}": ""`).join(',\n');
+  return `Look back over everything you know about me from our past conversations.
+
+Fill in this JSON with what you actually remember. Leave a field as "" if you
+genuinely do not know — do not guess, and do not invent anything to be helpful.
+Reply with the JSON and nothing else.
+
+{
+${lines}
+}
+
+What each field means:
+  vibe          how I come across in a sentence
+  interests     broad things I am into
+  area          the part of town or city I am in
+  goodSaturday  what a good Saturday actually looks like for me
+  hobbies       specific things I do, with detail
+  tastes        music, films, food I like
+  lookingFor    what I want from dating or a relationship
+  ageBand       rough age, e.g. "late 20s"
+  availability  when I am usually free
+  neighborhood  my more precise neighbourhood
+  dealbreakers  what would genuinely end it for me
+  name          my name
+  photo         a URL if you have one, otherwise ""
+  job           what I do for work
+  contact       a handle or email I use`;
+}
+
+app.get('/me/import-prompt', (req, res) => {
+  const me = whoIsEditing(req);
+  if (!me) {
+    res.status(401).json({ error: 'unauthorised' });
+    return;
+  }
+  res.json({ prompt: importPrompt() });
+});
+
+/** Accepts the assistant's answer — JSON if it obeyed, prose if it did not. */
+app.post('/me/import', (req, res) => {
+  const me = whoIsEditing(req);
+  if (!me) {
+    res.status(401).json({ error: 'unauthorised' });
+    return;
+  }
+  const text = String(req.body?.text ?? '').trim();
+  if (!text) {
+    res.status(400).json({ error: 'Paste what the assistant replied.' });
+    return;
+  }
+
+  const patch: Record<string, string> = {};
+
+  // Assistants wrap JSON in prose or a code fence more often than not, so take
+  // the outermost braces rather than trusting the whole body to parse.
+  const braced = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+  let parsed: Record<string, unknown> | null = null;
+  try {
+    parsed = JSON.parse(braced);
+  } catch {
+    parsed = null;
+  }
+
+  if (parsed && typeof parsed === 'object') {
+    for (const f of FIELD_NAMES) {
+      const v = parsed[f];
+      if (typeof v === 'string' && v.trim()) patch[f] = v.trim();
+    }
+  } else {
+    // Fallback: "field: value" lines, with or without bullets or bold.
+    for (const raw of text.split('\n')) {
+      const m = raw.match(/^\s*(?:[-*]\s*)?\**\s*([A-Za-z ]+?)\s*\**\s*[:\u2014-]\s*(.+?)\s*$/);
+      if (!m) continue;
+      const key = m[1]!.replace(/\s+/g, '').toLowerCase();
+      const field = FIELD_NAMES.find((f) => f.toLowerCase() === key);
+      if (field && m[2]!.trim() && !/^(unknown|n\/a|none)$/i.test(m[2]!.trim())) patch[field] = m[2]!.trim();
+    }
+  }
+
+  if (!Object.keys(patch).length) {
+    res.status(422).json({
+      error: 'Could not find any fields in that. Paste the JSON the assistant replied with.',
+    });
+    return;
+  }
+
+  const before = new Set(Object.keys(getProfile(me)!.fields));
+  const p = updateProfile(me, patch as any)!;
+  res.json({
+    imported: Object.keys(patch),
+    newFields: Object.keys(patch).filter((f) => !before.has(f)),
+    known: Object.keys(p.fields).length,
+    total: FIELD_NAMES.length,
+    format: parsed ? 'json' : 'text',
+  });
+});
+
 app.put('/api/budget', (req, res) => {
   const userId = res.locals.userId as string;
   const budget = req.body as ConsentBudget;

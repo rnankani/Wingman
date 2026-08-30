@@ -1,0 +1,20 @@
+- generic [ref=f4e2]:
+  - complementary [ref=f4e3]:
+    - navigation [ref=f4e4]:
+      - button "◉ Profile" [ref=f4e5] [cursor=pointer]:
+        - generic [ref=f4e6]: ◉
+        - text: Profile
+      - button "✦ Conversations" [ref=f4e7] [cursor=pointer]:
+        - generic [ref=f4e8]: ✦
+        - text: Conversations
+      - button "⎇ Connect" [ref=f4e9] [cursor=pointer]:
+        - generic [ref=f4e10]: ⎇
+        - text: Connect
+      - button "⚙ Settings" [ref=f4e11] [cursor=pointer]:
+        - generic [ref=f4e12]: ⚙
+        - text: Settings
+  - main [ref=f4e13]:
+    - generic [ref=f4e14]:
+      - heading "Profile" [level=1] [ref=f4e15]
+      - button "Refresh" [ref=f4e17] [cursor=pointer]
+    - heading "Your profile in full" [level=2] [ref=f4e19]

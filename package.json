@@ -9,7 +9,9 @@
     "setup": "tsx scripts/setup-trueforge.ts",
     "passwd": "tsx scripts/set-password.ts",
     "invite": "tsx scripts/invite.ts",
-    "watch": "tsx scripts/watch.ts"
+    "watch": "tsx scripts/watch.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "respond": "tsx scripts/respond.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

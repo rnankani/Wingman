@@ -14,7 +14,12 @@ export const LEVEL_LABELS: Record<Level, string> = {
 
 /** Field -> level. This map is the schema; profiles are just bags of these keys. */
 export const FIELD_LEVELS = {
-  // L0 public — general vibe, broad interests, borough/area, a good Saturday
+  // L0 public — general vibe, broad interests, borough/area, a good Saturday.
+  // gender and seeking live here because list_candidates filters on them, and a
+  // filter cannot run on data it is not allowed to see. They are the two things
+  // a dating app shows before anything else anyway.
+  gender: 'L0',
+  seeking: 'L0',
   vibe: 'L0',
   interests: 'L0',
   area: 'L0',
@@ -48,6 +53,8 @@ export const FIELD_NAMES = Object.keys(FIELD_LEVELS) as FieldName[];
  * because it fails quietly and looks like it worked.
  */
 export const FIELD_ALIASES: Record<FieldName, string[]> = {
+  gender: ['gender', 'my gender', 'pronouns', 'i am a', 'sex'],
+  seeking: ['seeking', 'looking to meet', 'interested in', 'orientation', 'who i date'],
   vibe: ['vibe', 'personality'],
   interests: ['interests'],
   area: ['area', 'borough', 'part of town', 'side of town'],
@@ -68,6 +75,65 @@ export const FIELD_ALIASES: Record<FieldName, string[]> = {
 export function fieldsAtOrBelow(level: Level): FieldName[] {
   const max = LEVELS.indexOf(level);
   return FIELD_NAMES.filter((f) => LEVELS.indexOf(FIELD_LEVELS[f]) <= max);
+}
+
+
+/* --------------------------------------------------------------- matching */
+/**
+ * Who a person is, and who they want to meet.
+ *
+ * Free text in the store — people describe themselves in their own words — so
+ * everything is normalised here rather than forcing a dropdown on the way in.
+ * Anything unrecognised becomes `other`, which is treated as compatible with
+ * whoever is open to it rather than being quietly dropped from the registry.
+ */
+export type Gender = 'man' | 'woman' | 'nonbinary' | 'other';
+
+export function normalizeGender(raw: string | undefined): Gender | null {
+  const t = (raw ?? '').trim().toLowerCase();
+  if (!t) return null;
+  if (/\b(non[- ]?binary|nb|enby|genderqueer|agender)\b/.test(t)) return 'nonbinary';
+  if (/\b(woman|female|f|she\/her|she)\b/.test(t)) return 'woman';
+  if (/\b(man|male|m|he\/him|he)\b/.test(t)) return 'man';
+  return 'other';
+}
+
+/** The set of genders someone is open to. Empty means "did not say". */
+export function normalizeSeeking(raw: string | undefined): Set<Gender> {
+  const t = (raw ?? '').trim().toLowerCase();
+  const out = new Set<Gender>();
+  if (!t) return out;
+  if (/\b(anyone|everyone|any|all|open to all|no preference)\b/.test(t)) {
+    return new Set<Gender>(['man', 'woman', 'nonbinary', 'other']);
+  }
+  if (/\b(women|woman|female|females|girls)\b/.test(t)) out.add('woman');
+  if (/\b(men|man|male|males|guys)\b/.test(t)) out.add('man');
+  if (/\b(non[- ]?binary|nb|enby)\b/.test(t)) out.add('nonbinary');
+  if (out.size) out.add('other');
+  return out;
+}
+
+/**
+ * Mutual, not one-way: each side has to be open to the other. A one-way check
+ * is how "guys asking other guys" happens — A's preference gets honoured and
+ * B's is ignored.
+ *
+ * Missing data is permissive. Someone who has not told their agent their gender
+ * yet should still appear as a candidate rather than silently vanishing from
+ * everyone's registry with no error to explain it.
+ */
+export function mutuallyCompatible(
+  a: { gender?: string; seeking?: string },
+  b: { gender?: string; seeking?: string },
+): boolean {
+  const ag = normalizeGender(a.gender);
+  const bg = normalizeGender(b.gender);
+  const aWants = normalizeSeeking(a.seeking);
+  const bWants = normalizeSeeking(b.seeking);
+
+  const aOk = !aWants.size || !bg || aWants.has(bg);
+  const bOk = !bWants.size || !ag || bWants.has(ag);
+  return aOk && bOk;
 }
 
 /** What the human authorized for each rung of the ladder. */
@@ -155,7 +221,14 @@ export interface Store {
   channels: Record<string, Channel>;
 }
 
-export const MAX_EXCHANGES = 8;
+/**
+ * Effectively no cap. The 8-exchange limit existed to force a verdict, but it
+ * cut conversations off exactly when they were getting concrete — right where
+ * two agents start negotiating an actual day and place. An agent that has
+ * decided should submit a verdict because it decided, not because it ran out
+ * of turns.
+ */
+export const MAX_EXCHANGES = 1000;
 
 /** Ladder order helper — escalation must be one rung at a time. */
 export function nextLevel(current: Level): Level | null {
