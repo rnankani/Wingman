@@ -464,7 +464,6 @@
       <button class="navtab" data-panel="profile"><span class="ico">&#9673;</span> Profile</button>
       <button class="navtab" data-panel="candidates"><span class="ico">&#10022;</span> Conversations <span class="count" id="cCandidates" hidden></span></button>
       <button class="navtab" data-panel="connect"><span class="ico">&#9095;</span> Connect</button>
-      <button class="navtab" data-panel="population" id="tabPopulation" hidden><span class="ico">&#9678;</span> Population <span class="count" id="cPopulation" hidden></span></button>
       <button class="navtab" data-panel="settings"><span class="ico">&#9881;</span> Settings</button>
     </nav>
 
@@ -496,10 +495,6 @@
 
     <section class="panel" id="p-connect" hidden>
       <div class="card" id="connect"></div>
-    </section>
-
-    <section class="panel" id="p-population" hidden>
-      <div class="clist" id="population"></div>
     </section>
 
     <section class="panel" id="p-settings" hidden>
@@ -575,7 +570,6 @@ const PANELS = {
   profile:    { title: 'Profile',      blurb: 'what your wingman knows about you' },
   candidates: { title: 'Conversations', blurb: 'people your agent has actually talked to' },
   connect:    { title: 'Connect',      blurb: 'point a machine at this server' },
-  population: { title: 'Population', blurb: 'the seeded demo people, negotiating with each other' },
   settings:   { title: 'Settings',     blurb: 'your account, your consent budget, this machine' },
 };
 const PANEL_STORE = 'wingman.panel';
@@ -915,60 +909,6 @@ function renderProfiles(profiles) {
   });
 }
 
-/**
- * Everyone else. L0 only — this is the same projection the list_candidates tool
- * hands an agent, so the dashboard cannot show you more about a stranger than
- * your wingman could learn on its own.
- */
-function renderPopulation(channels, names) {
-  const who = (id) => names[id] ?? id;
-  if (!channels.length) {
-    $('population').innerHTML = `
-      <div class="card hollow">
-        <div class="chikny chikny--resting"></div>
-        <div>The demo population is idle. Open a channel between two of them and it appears here.</div>
-      </div>`;
-    return;
-  }
-  $('population').innerHTML = channels.map(c => {
-    const [a, b] = c.parties;
-    const vs = Object.entries(c.verdicts ?? {});
-    const allMatch = vs.length === 2 && vs.every(([, v]) => v.verdict === 'match');
-    const anyPass = vs.some(([, v]) => v.verdict === 'pass');
-    const pose = allMatch ? 'matched' : anyPass ? 'passed' : c.closed ? 'thinking' : 'negotiating';
-
-    const turns = (c.turns ?? []).map(t => `
-      <div class="turn ${t.from === b ? 'right' : ''}">
-        <div class="bubble">
-          <span class="from">${esc(who(t.from))} · ${esc(t.level)}</span>
-          <span class="msg">${esc(t.message)}</span>
-        </div>
-      </div>`).join('');
-
-    const outcome = c.date
-      ? `<div class="outcome tint" style="--accent: var(--green)">
-           Date booked · ${esc(c.date.venue)} at ${esc(new Date(c.date.isoTime).toLocaleString())}
-         </div>`
-      : c.intro
-        ? `<div class="outcome tint" style="--accent: var(--blue)">Intro sent — ${esc(c.intro.text)}</div>`
-        : '';
-
-    return `
-      <div class="card">
-        <div class="c-head">
-          <div class="chikny chikny--${pose}"></div>
-          <span class="vs">${esc(who(a))}<em>vs</em>${esc(who(b))}</span>
-          <span class="c-meta">${c.turns.length} turns ·
-            ${c.closed ? 'closed' : `waiting on ${esc(who(c.waitingOn))}`}</span>
-        </div>
-        <div class="turns">${turns || '<div class="empty">No turns yet.</div>'}</div>
-        ${vs.map(([id, v]) => `<div class="vrow">${esc(who(id))} returned
-           <b class="${esc(v.verdict)}">${esc(v.verdict)}</b>${v.reason ? ` — ${esc(v.reason)}` : ''}</div>`).join('')}
-        ${outcome}
-      </div>`;
-  }).join('');
-}
-
 let lastCandidates = [];
 function renderCandidates(candidates) {
   lastCandidates = candidates;
@@ -1063,10 +1003,6 @@ async function load() {
     // everyone else and must not blank the rest of the page.
     if (me.isOwner) {
       $('ownerOnly').hidden = false;
-      $('tabPopulation').hidden = false;
-      const pop = await api('/api/population').then(r => r.json());
-      renderPopulation(pop.channels ?? [], pop.names ?? {});
-      setCount('cPopulation', (pop.channels ?? []).length);
       const st = await api('/api/status').then(r => r.json());
       renderChecks(st.checks);
       renderTools(st.tools, st.approvalPolicy);

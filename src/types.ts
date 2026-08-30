@@ -206,6 +206,8 @@ export interface Channel {
   waitingOn: string;
   exchanges: number;
   maxExchanges: number;
+  /** Times either side floated, and whether their human okayed them. */
+  proposals?: { from: string; isoTime: string; note?: string; at: string }[];
   intro?: { from: string; text: string; at: string };
   date?: { venue: string; isoTime: string; proposedBy: string; acceptedBy: string[] };
   closed: boolean;

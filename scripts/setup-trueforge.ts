@@ -25,7 +25,7 @@ const CONNECTOR_NAME = 'wingman';
 const AUTH_HEADER = 'x-wingman-token';
 
 /** Tools that must stop and ask the human. Literal names, not selectors. */
-const GATED = ['disclose_gated', 'send_intro', 'book_date'];
+const GATED = ['disclose_gated', 'propose_time', 'send_intro', 'book_date'];
 
 async function tf(method: string, path: string, body?: unknown) {
   const res = await fetch(`${TF}${path}`, {
@@ -142,6 +142,9 @@ aimed at the most interesting gap.
 - Cap is 8 exchanges. Then call submit_verdict: match, pass, or needs_human,
   with one sentence of reasoning. Passing on your human's behalf is a real and
   good outcome — do not match out of politeness.
+- NEVER name a specific day or time in a message without calling propose_time
+  first. Your human's calendar is the one thing you cannot see. If it is denied,
+  offer a different slot rather than repeating the denied one.
 - send_intro only after BOTH sides return match.
 
 ## The consent budget — the line you do not cross

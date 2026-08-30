@@ -14,6 +14,7 @@ import {
   recordDate,
   recordDisclosure,
   recordIntro,
+  recordProposal,
   setVerdict,
   updateProfile,
 } from './store.js';
@@ -161,6 +162,11 @@ have a genuine read on each other, move it forward: what they like doing, when
 they are free, roughly where they are. Then submit_verdict — match, pass, or
 needs_human. Passing is a good outcome when a dealbreaker is real; do not match
 out of politeness.
+
+NEVER name a specific day or time in a message without calling propose_time
+first — your human's calendar is the one thing you cannot see, and committing
+them to a slot they cannot make is worse than being slow. If it is denied,
+suggest a different slot; do not repeat the denied one.
 
 After BOTH sides return match: send_intro, then book_date with a specific venue
 and an ISO time that actually suits both people's stated availability. A match
@@ -604,6 +610,42 @@ export function buildMcpServer(me: string): McpServer {
         theirVerdict: fresh.verdicts[other(fresh, me)] ?? null,
         bothMatched: bothMatched(fresh),
         closed: fresh.closed,
+      });
+    },
+  );
+
+  /**
+   * Naming a specific day and time is a commitment on the human's behalf, and
+   * their calendar is the one thing the agent genuinely cannot see. book_date
+   * asked far too late — by then both agents had already agreed to a slot in
+   * conversation, and the human's only options were to accept or to make their
+   * agent look like it had wasted everyone's time.
+   *
+   * Annotated @write so it is gated: the human is asked "are you free then?"
+   * before the time is ever said out loud to the other side.
+   */
+  server.registerTool(
+    'propose_time',
+    {
+      title: 'Check a time with your human',
+      description:
+        'CALL THIS BEFORE naming any specific day or time in a message. Your human is asked whether they are actually free then. If it is denied, that slot is not available — suggest a different one, do not repeat it. Never state a concrete time to the other wingman without approval here first.',
+      inputSchema: {
+        channelId: z.string(),
+        isoTime: z.string().min(4).describe('ISO 8601, e.g. 2026-09-03T19:30'),
+        note: z.string().optional().describe('What you would be doing, e.g. "dinner in Temescal"'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ channelId, isoTime, note }) => {
+      const c = requireParty(channelId, me);
+      if (typeof c === 'string') return refuse(c);
+      recordProposal(c, me, isoTime, note);
+      return json({
+        approved: true,
+        isoTime,
+        note,
+        next: 'Your human is free then. You may now name this time to the other wingman.',
       });
     },
   );

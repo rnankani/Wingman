@@ -6,3 +6,4 @@ data/admin-key
 data/join-code
 data/password
 data/backups/
+.playwright-mcp/

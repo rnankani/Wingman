@@ -407,6 +407,16 @@ export function bothMatched(c: Channel): boolean {
   return c.parties.every((p) => c.verdicts[p]?.verdict === 'match');
 }
 
+export function recordProposal(
+  c: Channel,
+  from: string,
+  isoTime: string,
+  note?: string,
+): void {
+  (c.proposals ??= []).push({ from, isoTime, note, at: new Date().toISOString() });
+  persist();
+}
+
 export function recordIntro(c: Channel, from: string, text: string): void {
   c.intro = { from, text, at: new Date().toISOString() };
   persist();
